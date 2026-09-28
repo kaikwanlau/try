@@ -1,6 +1,6 @@
 # Script reference
 
-All paths below are relative to the repository root. Keep the numbered folders and `paths.py` together. The supplied original algorithms are unchanged in this presentation update.
+All paths below are relative to the repository root. Keep the numbered folders and `paths.py` together.
 
 ## Entry points
 

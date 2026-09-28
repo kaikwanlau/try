@@ -1,7 +1,7 @@
-# data/
+# Data
 
-The only place the meshes are kept. The scripts find these folders through `paths.py` in the
-project folder; nothing needs to be copied next to a script.
+This folder contains the prepared skull meshes and measurement workbooks. The scripts locate
+them through `paths.py` in the repository root.
 
 | Folder or file | Contents |
 |---|---|
@@ -17,11 +17,24 @@ project folder; nothing needs to be copied next to a script.
 
 The scripts only read from this folder; their results go into `output/` next to each script.
 
+## Use in the study
+
+The **100 skulls of Darwin’s finches and their relatives** form the main dataset for the skull measurements and statistical analyses.
+
+The **51 additional bird skulls** (42 Hawaiian honeycreepers and 9 cardueline relatives) were analysed with the finch fitting settings. In Supporting Information Section S4, 38 of the 51 orbital fits meet both quality criteria: at least 40 inliers and an RMS residual no greater than 10% of the fitted radius. The other 13 are flagged for review. Every fit was also inspected visually.
+
+The **two rodent skulls and four human crania** are exploratory examples used to examine the method’s scope and limitations:
+
+- In the rodents, the fitted spheres lie outside the orbits. The paper therefore does not report orbital measurements for these specimens.
+- In the human crania, the search band was changed to 10–50% of skull length and the radius range to 2–60 mm. The fitted spheres lie in the orbits, but none of the four fits meets both S4 quality criteria.
+
+These are groups of specimens; all the supplied surface meshes use the STL format. Their inclusion does not imply that the method gives reliable orbital measurements for every specimen or taxon.
+
 ## Sources and scope
 
 The bird scans were acquired and processed in the work of Tokita et al. (2017), Al-Mosleh et al. (2021) and Mosleh et al. (2023), and were remeshed for this study. The honeycreeper and cardueline collections come from the Tokita et al. dataset. See the accompanying paper for the specimen lists and preparation method.
 
-The two rodent examples are *Peromyscus gossypinus* and *P. simulus* from the openVertebrate project. The four human examples are drawn from TotalSegmentator (s1397), the Arothron example skull, BodyParts3D and a NiiVue sample head CT. Their preparation and fitting settings are described in the paper; they are not all processed with identical bird defaults.
+The two rodent examples are *Peromyscus gossypinus* and *P. simulus* from the openVertebrate project. The four human examples are drawn from TotalSegmentator (s1397), the Arothron example skull, BodyParts3D and a NiiVue sample head CT. Their preparation and fitting settings are described in the paper.
 
 | Reference | Source described |
 | :--- | :--- |
@@ -36,4 +49,4 @@ Preserve the original source attributions and check the terms attached to each s
 
 The statistics scripts read the released workbooks in this folder. The fitting scripts write new workbooks under their output folders; those do not automatically replace the released tables. Keep your own inputs in a separate folder and retain the measurement version used in an analysis.
 
-Folder names and specimen filenames are preserved from the supplied release, including their original spelling and capitalization. Use the paper’s specimen lists for taxonomic interpretation. The presence of a mesh in the collection does not establish that a fit is reliable.
+Folder names and specimen filenames retain their original spelling and capitalization. See the paper’s specimen lists for taxonomic details.

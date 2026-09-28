@@ -1,12 +1,12 @@
 # Reproduce the paper
 
-Use this route to work from the released meshes and measurement workbooks. For new specimens, start with the [biologist’s guide](START_HERE.md).
+This guide describes the commands for reproducing the analyses from the prepared meshes and measurement workbooks. For new specimens, see the [biologist’s guide](START_HERE.md).
 
 ## Environment and inputs
 
 Use Python 3.12 and install `requirements.txt` in a virtual environment as described in the [installation guide](START_HERE.md#1-download-and-install). Run the commands below **from the repository root**.
 
-The supplied data comprise 100 finch/relative meshes, 42 honeycreeper meshes, 9 cardueline-relative meshes, 2 rodent meshes and 4 human crania. The three workbooks live in `data/`. These are the files from the supplied revision bundle; this documentation refresh does not revise their measurements.
+The main dataset contains 100 skulls of Darwin’s finches and their relatives. The additional 42 honeycreeper skulls and 9 cardueline-relative skulls are used in the applicability analysis in SI Section S4. Two rodent skulls and four human crania provide exploratory examples of the method’s scope and limitations. See [data sources and scope](../data/README.md) for the fitting outcomes. The three measurement workbooks are in `data/`.
 
 The numerical dependencies are pinned to the supplied study environment. Keep the Python and package versions with any new output. The full requirements file leaves some visualization packages with minimum versions; it is not a complete environment lockfile.
 

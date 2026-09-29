@@ -1,8 +1,8 @@
 # Robust parametric estimation of avian cranial morphology
 
-**From a 3D skull to interpretable geometric measurements.**
+Code and data for the paper *Robust Parametric Estimation of Avian Cranial Morphology* by **Kaikwan Lau and Gary P. T. Choi**.
 
-Measure skull dimensions, fit an orbital sphere, and describe the neurocranium with an ellipsoid. A Python workflow for prepared skull meshes, with data and analyses accompanying the methods paper by **Kaikwan Lau and Gary P. T. Choi**.
+The Python scripts estimate skull dimensions, orbital radius and neurocranial shape from prepared 3D skull meshes. The repository includes the study datasets, fitting scripts, statistical analyses and instructions for using the code with other specimens.
 
 [Read the paper](https://arxiv.org/abs/2511.06426) · [Start with one skull](docs/START_HERE.md) · [Use your own data](docs/START_HERE.md#use-your-own-skulls) · [Reproduce the paper](docs/REPRODUCE.md)
 
@@ -10,17 +10,17 @@ Measure skull dimensions, fit an orbital sphere, and describe the neurocranium w
 
 <p align="center"><sub>18.8-second method overview · <a href="docs/assets/demo.mp4">MP4 version</a> · <a href="docs/assets/tutorial.mp4">7:09 guided tutorial</a></sub></p>
 
-## Two ways in
+## Documentation
 
-| I want to… | Start here |
+| Task | Guide |
 | :--- | :--- |
-| Understand what the method measures | Watch the animation above, then read the three outputs below. |
-| Measure skulls without learning the whole codebase | **[Biologist’s guide](docs/START_HERE.md)** — one example, then your own STL files. |
-| Reproduce the study | **[Reproduction guide](docs/REPRODUCE.md)** — datasets, figures, statistics and numerical checks. |
+| Understand the method | The animation above and the measurements described below |
+| Analyse your own skull meshes | [Biologist’s guide](docs/START_HERE.md): installation, an example and input requirements |
+| Reproduce the study | [Reproduction guide](docs/REPRODUCE.md): datasets, analyses, figures and numerical checks |
 
-Prefer a visual guide? After downloading the repository, open **`docs/index.html`** in your browser. It includes both videos, a step-by-step method explorer and tutorial chapters; it also works offline.
+After downloading the repository, open **`docs/index.html`** in a browser for the project website, including both videos and illustrated explanations of the measurements. The website also works offline.
 
-## Three geometric outputs
+## Measurements
 
 | Skull size | Orbit | Neurocranium |
 | :--- | :--- | :--- |
@@ -28,9 +28,9 @@ Prefer a visual guide? After downloading the repository, open **`docs/index.html
 | `length_x`, `width_y`, `height_z` | Radius `r` and curvature `1/r` | Semi-axis lengths `a`, `b`, `c` |
 | Mesh coordinates need the intended anatomical orientation | A numerical fit still needs anatomical inspection | Semi-axes describe the fitted geometry, not direct brain measurements |
 
-The method contribution is the geometric measurement workflow. The finch data provide biological validation; the additional taxa explore transfer to other skull shapes. Preparation, orientation and suitable parameter choices remain part of the workflow.
+The scripts require prepared, anatomically oriented meshes. The default fitting settings were selected for the finch dataset; other skull shapes may require different settings and should be checked visually.
 
-## Start with one skull
+## Run an example
 
 Download and unzip this repository using **Code → Download ZIP**, or clone it. With **Python 3.12**, open a terminal in the repository folder and create a virtual environment:
 
@@ -45,13 +45,22 @@ python -m pip install -r requirements-quickstart.txt
 python quickstart.py
 ```
 
-This fits the orbit of the supplied **`G.DifficilisA.stl`** specimen using the existing headless fitting code. It writes a measurement CSV, a three-view inspection image and a record of the settings and software versions to **`output/quickstart/`**. No MATLAB or interactive 3D window is needed for this example.
+This fits an orbital sphere to the supplied **`G.DifficilisA.stl`** specimen and saves measurements, a three-view inspection image, and the settings and software versions in **`output/quickstart/`**. The example runs without MATLAB or an interactive 3D window.
 
 For the full workflow, install `requirements.txt` and follow the [biologist’s guide](docs/START_HERE.md). The orbital example does not perform the ellipsoid fit or the paper’s full analysis.
 
-## Data and code, together
+## Datasets
 
-The release contains **100 finch and relative skulls**, **51 additional bird skulls**, **2 rodent skulls** and **4 human crania**. See [data sources and scope](data/README.md) before reuse.
+The main analyses use 100 skulls of Darwin’s finches and their relatives. Applicability to other skulls is examined in Supporting Information Section S4.
+
+| Dataset | Skulls | Use in the study |
+| :--- | ---: | :--- |
+| Darwin’s finches and relatives | 100 | Skull measurements and statistical analyses |
+| Hawaiian honeycreepers and cardueline relatives | 51 (42 + 9) | Application of the finch fitting settings to additional bird skulls |
+
+Two rodent skulls and four human crania are included as exploratory examples. The rodent fits did not identify the orbits. The human fits used adjusted settings, and none met both S4 quality criteria. See [data sources and scope](data/README.md) for details.
+
+## Repository structure
 
 | Folder | Purpose |
 | :--- | :--- |
@@ -63,7 +72,7 @@ The release contains **100 finch and relative skulls**, **51 additional bird sku
 | [`5_figures/`](5_figures/) | Paper figures and the overview animation |
 | [`6_verification/`](6_verification/) | Refit meshes and compare against encoded manuscript values |
 
-`paths.py` centralizes the supplied data paths. Generated results go into `output/` folders; remeshing uses its own working folders. The [script reference](docs/REFERENCE.md) lists the exact inputs and outputs.
+`paths.py` defines the data paths. Generated results go into `output/` folders; remeshing uses its own working folders. The [script reference](docs/REFERENCE.md) lists each script’s inputs and outputs.
 
 ## Before interpreting a fit
 
@@ -88,6 +97,6 @@ Kaikwan Lau and Gary P. T. Choi. *[Robust Parametric Estimation of Avian Cranial
 }
 ```
 
-Code license: **[Apache License 2.0](LICENSE)**. See the original data sources for their attribution and reuse terms. Publication metadata is kept as a preprint until a journal citation is available.
+Code license: **[Apache License 2.0](LICENSE)**. See the original data sources for their attribution and reuse terms.
 
 [Report an issue](https://github.com/kaikwanlau/skull-morphology/issues) · [Script reference](docs/REFERENCE.md) · [Update notes](UPDATE_NOTES.md)

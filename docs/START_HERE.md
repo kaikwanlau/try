@@ -1,6 +1,6 @@
-# Start with one skull
+# Getting started
 
-**A practical guide for biologists.** First run a supplied specimen, inspect the fit, then point the batch scripts at your own prepared meshes.
+This guide covers installing the code, fitting an example skull and analysing your own prepared STL meshes.
 
 [Project overview](../README.md) · [Visual guide](index.html) · [Video tutorial, 7:09](assets/tutorial.mp4) · [Reproduction guide](REPRODUCE.md)
 
@@ -143,7 +143,7 @@ The SI Section S4 generalization analysis uses **at least 40 inliers and RMS/rad
 
 Choose settings for the anatomical scale and mesh preparation, document them, and inspect outcomes. Do not widen thresholds merely to force numerical success. Long bills can shift the orbit relative to the fixed length-based band.
 
-The batch script supports `FOLDER_OVERRIDES` keyed by folder name. It already has a `Peromyscus` override, so a folder’s name can change the settings it receives. The human example script uses a **10–50% search band and a 2–60 mm radius window**. These separate settings are why the overview’s “same code” should not be read as “identical settings for every taxon”.
+The batch script supports `FOLDER_OVERRIDES` keyed by folder name. It already has a `Peromyscus` override, so a folder’s name can change the settings it receives. The human example script uses a **10–50% search band and a 2–60 mm radius window**. See [data sources and scope](../data/README.md) for the results and limitations of the mammalian examples.
 
 ### 9. Fit the neurocranium
 

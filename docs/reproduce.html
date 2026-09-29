@@ -5,10 +5,10 @@
 <header class="masthead"><a class="brand" href="index.html">skull / morphology<small>GEOMETRY · BIOLOGY · CODE</small></a>
 <nav aria-label="Main navigation"><a href="index.html">Overview</a><a href="start-here.html">Start here</a><a class="repo-link" href="https://github.com/kaikwanlau/skull-morphology">GitHub ↗</a></nav></header>
 <div class="article-layout"><aside class="article-nav" aria-label="Guide contents"><a href="index.html">Project overview</a><a href="start-here.html">Start here</a><a href="reproduce.html" aria-current="page">Reproduce</a><a href="reference.html">Script reference</a><a href="data.html">Data sources</a><a href="citation.html">Citation</a></aside><main class="article" id="main"><h1 id="reproduce-the-paper">Reproduce the paper</h1>
-<p>Use this route to work from the released meshes and measurement workbooks. For new specimens, start with the <a href="start-here.html">biologist’s guide</a>.</p>
+<p>This guide describes the commands for reproducing the analyses from the prepared meshes and measurement workbooks. For new specimens, see the <a href="start-here.html">biologist’s guide</a>.</p>
 <h2 id="environment-and-inputs">Environment and inputs</h2>
 <p>Use Python 3.12 and install <code>requirements.txt</code> in a virtual environment as described in the <a href="start-here.html#1-download-and-install">installation guide</a>. Run the commands below <strong>from the repository root</strong>.</p>
-<p>The supplied data comprise 100 finch/relative meshes, 42 honeycreeper meshes, 9 cardueline-relative meshes, 2 rodent meshes and 4 human crania. The three workbooks live in <code>data/</code>. These are the files from the supplied revision bundle; this documentation refresh does not revise their measurements.</p>
+<p>The main dataset contains 100 skulls of Darwin’s finches and their relatives. The additional 42 honeycreeper skulls and 9 cardueline-relative skulls are used in the applicability analysis in SI Section S4. Two rodent skulls and four human crania provide exploratory examples of the method’s scope and limitations. See <a href="data.html">data sources and scope</a> for the fitting outcomes. The three measurement workbooks are in <code>data/</code>.</p>
 <p>The numerical dependencies are pinned to the supplied study environment. Keep the Python and package versions with any new output. The full requirements file leaves some visualization packages with minimum versions; it is not a complete environment lockfile.</p>
 <h2 id="choose-the-computation">Choose the computation</h2>
 <table>

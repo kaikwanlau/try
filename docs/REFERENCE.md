@@ -64,7 +64,7 @@ Settings are edited near the top of each original script (inside the main block 
 | `5_figures/figure.py` | `--only 4,9,S2`, `--eps`, `--refit` | `output/figure/figures/`, with a separate measurement cache |
 | `5_figures/demo_animation.py` | Settings in the file | `output/demo_animation/`: GIF, MP4 and frames |
 
-The figure builder uses prepared meshes plus optional [figure inputs](../data/figure_inputs/README.md). It is not a converter for the supplied manuscript PDFs.
+The figure builder uses prepared meshes plus the included [figure inputs](../data/figure_inputs/README.md). It is not a converter for the supplied manuscript PDFs.
 
 ## 6. Verification
 

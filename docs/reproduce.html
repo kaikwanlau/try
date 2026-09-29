@@ -104,15 +104,15 @@
 </table>
 <p>The verifier compares against values <strong>written into the script</strong>. It does not read the newest manuscript automatically. A passing report means agreement with those encoded values; changes to the manuscript must be checked against them separately.</p>
 <p>The verifier can install missing Python dependencies automatically; run it inside the project environment. With <code>USE_TESTED_VERSIONS = True</code>, it can change installed package versions. With <code>QUICK_RUN = True</code>, it uses stored workbook values instead of refitting the meshes, so that mode is not independent mesh-to-table verification.</p>
-<p>The workflow starts from the prepared meshes; it does not rerun the original remeshing and anatomical alignment. The original raw scan used in Fig. 1(b) is currently unavailable. Its absence does not prevent fitting the released prepared meshes or running the statistical analyses.</p>
+<p>The workflow starts from the prepared meshes; it does not rerun the original remeshing and anatomical alignment. The original scan-derived STL surface shown in Fig. 1(b) is included separately as a figure input. The full collection of original CT scans is not part of this release.</p>
 <h2 id="figures-and-media">Figures and media</h2>
 <pre><code class="language-bash">python 5_figures/figure.py
 python 5_figures/figure.py --eps
 python 5_figures/figure.py --refit
 </code></pre>
 <p>The figure script caches its measurements. Use <code>--refit</code> after changing input meshes or fitting settings. A full figure build may take substantially longer than the one-skull example.</p>
-<p>Exact regeneration of every figure panel is not supported by the current inputs. The raw scan for Fig. 1(b) is currently unavailable; the photograph for Fig. 1(a) and two earlier-remeshing meshes for Fig. S1 are also not included. The figure script leaves affected panels as labelled blanks and continues with the available inputs. See <a href="figure-inputs.html">figure inputs and availability</a>.</p>
-<p>Use the released prepared meshes for the analysis workflow. Substituting those meshes into the missing raw-scan or earlier-remeshing panels would misrepresent the processing stages being compared.</p>
+<p>The four additional inputs for Fig. 1(a-b) and Fig. S1 are included: the referenced photograph, the original scan-derived skull surface and two earlier-remeshed skulls. Source links, licences and checksums are documented in <a href="figure-inputs.html">figure inputs and sources</a>. The photograph is stored as its original JPEG and cropped by the figure script.</p>
+<p>Use the released prepared meshes for the analysis workflow. Keep the raw and earlier-remeshing inputs in their separate figure folders so that the panels show the correct processing stages. If a file is removed, its panel becomes a labelled blank. Including all figure inputs does not establish agreement with every numerical result; use the verification workflow above for that check.</p>
 <p>To regenerate the original short animation:</p>
 <pre><code class="language-bash">python 5_figures/demo_animation.py
 </code></pre>

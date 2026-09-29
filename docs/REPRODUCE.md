@@ -48,7 +48,7 @@ The verifier compares against values **written into the script**. It does not re
 
 The verifier can install missing Python dependencies automatically; run it inside the project environment. With `USE_TESTED_VERSIONS = True`, it can change installed package versions. With `QUICK_RUN = True`, it uses stored workbook values instead of refitting the meshes, so that mode is not independent mesh-to-table verification.
 
-The workflow starts from the prepared meshes; it does not rerun the original remeshing and anatomical alignment. The original raw scan used in Fig. 1(b) is currently unavailable. Its absence does not prevent fitting the released prepared meshes or running the statistical analyses.
+The workflow starts from the prepared meshes; it does not rerun the original remeshing and anatomical alignment. The original scan-derived STL surface shown in Fig. 1(b) is included separately as a figure input. The full collection of original CT scans is not part of this release.
 
 ## Figures and media
 
@@ -60,9 +60,9 @@ python 5_figures/figure.py --refit
 
 The figure script caches its measurements. Use `--refit` after changing input meshes or fitting settings. A full figure build may take substantially longer than the one-skull example.
 
-Exact regeneration of every figure panel is not supported by the current inputs. The raw scan for Fig. 1(b) is currently unavailable; the photograph for Fig. 1(a) and two earlier-remeshing meshes for Fig. S1 are also not included. The figure script leaves affected panels as labelled blanks and continues with the available inputs. See [figure inputs and availability](../data/figure_inputs/README.md).
+The four additional inputs for Fig. 1(a-b) and Fig. S1 are included: the referenced photograph, the original scan-derived skull surface and two earlier-remeshed skulls. Source links, licences and checksums are documented in [figure inputs and sources](../data/figure_inputs/README.md). The photograph is stored as its original JPEG and cropped by the figure script.
 
-Use the released prepared meshes for the analysis workflow. Substituting those meshes into the missing raw-scan or earlier-remeshing panels would misrepresent the processing stages being compared.
+Use the released prepared meshes for the analysis workflow. Keep the raw and earlier-remeshing inputs in their separate figure folders so that the panels show the correct processing stages. If a file is removed, its panel becomes a labelled blank. Including all figure inputs does not establish agreement with every numerical result; use the verification workflow above for that check.
 
 To regenerate the original short animation:
 

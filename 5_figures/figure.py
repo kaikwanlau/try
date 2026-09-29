@@ -19,7 +19,7 @@ HUMAN_FIT = dict(ROI_START_PERCENT=0.10, ROI_END_PERCENT=0.50,
 OUT_DIR = str(_OUT / "figures")
 CACHE_DIR = str(_OUT / "figure_cache")
 
-PHOTO_FILE = str(paths.FIGURE_INPUTS / "photo" / "C.pallidus.png")
+PHOTO_FILE = str(paths.FIGURE_INPUTS / "photo" / "C.pallidus.jpg")
 PHOTO_CROP = (0.184, 0.193, 0.865, 0.745)
 WIRE_RESOLUTION = 30
 WIRE_RESOLUTION_BY_FIGURE = {

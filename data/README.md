@@ -18,6 +18,8 @@ them through `paths.py` in the repository root.
 
 The scripts only read from this folder; their results go into `output/` next to each script.
 
+The [figure-input folder](https://github.com/kaikwanlau/try/tree/main/data/figure_inputs) also includes the referenced photograph, one original scan-derived STL and two earlier-remeshed skulls. Their source links and reuse terms are listed there; they do not add specimens to the analysis cohorts above.
+
 ## Use in the study
 
 The **100 skulls of Darwin’s finches and their relatives** form the main dataset for the skull measurements and statistical analyses.

@@ -1,0 +1,151 @@
+name: Restore verified figure inputs
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/import-figure-inputs.yml]
+permissions:
+  contents: write
+concurrency:
+  group: restore-figure-inputs
+  cancel-in-progress: false
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+      - name: Download originals and verify source checksums
+        shell: bash
+        run: |
+          python - <<'PYTHON'
+          SOURCE_MANIFEST = '{\n  "checked_at": "2026-09-29",\n  "files": [\n    {\n      "path": "photo/C.pallidus.jpg",\n      "bytes": 1767746,\n      "sha256": "20a5521c3f922bf2c9f001ee4def10de4a5debb3fd92b6f310f4c1cfb32ceeb9",\n      "sha1": "ad4d26a930222163d515ba26a3d94879a8b4a1b2",\n      "md5": "471edaaf842ccd16bb584c1a0b03dbcd",\n      "git_blob_sha1": "6ff3edde6e9cd889b2131ca733b15f89f129bb8f",\n      "bytes_unchanged_from_source": true,\n      "source_url": "https://commons.wikimedia.org/wiki/File:Camarhynchus_pallidus_12789263.jpg",\n      "download_url": "https://upload.wikimedia.org/wikipedia/commons/f/f3/Camarhynchus_pallidus_12789263.jpg",\n      "author": "Julien Renoult",\n      "date": "2017-03-27",\n      "license": "CC BY 4.0",\n      "license_url": "https://creativecommons.org/licenses/by/4.0/",\n      "original_source": "https://www.inaturalist.org/photos/12789263",\n      "width": 2048,\n      "height": 1365,\n      "processing": "Original JPEG retained unchanged; existing figure script applies a crop when rendering."\n    },\n    {\n      "path": "raw_meshes/P2.InornataA.stl",\n      "bytes": 16181434,\n      "sha256": "010fbd5edb1ccd8cc0e2fa821b1818ac042228309ef3f66eba006ab8c8f44dc8",\n      "sha1": "6fe03b87785b07d2f410528f6462f5b3148f4f81",\n      "md5": "c5ea84293cecb28510cf35d1ee3ab56e",\n      "git_blob_sha1": "5ff4185bb8beeec867c17d4fb611d88dd9cc7b55",\n      "bytes_unchanged_from_source": true,\n      "triangle_count": 323627,\n      "source_url": "https://doi.org/10.7910/DVN/IHODX1",\n      "download_url": "https://dataverse.harvard.edu/api/access/datafile/5193531",\n      "source_dataset_version": "2.0",\n      "source_file_id": 5193531,\n      "source_path": "Meshes/Full Skulls STL/P2.InornataA.stl",\n      "license": "CC0 1.0",\n      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",\n      "source_checksum": {\n        "algorithm": "MD5",\n        "value": "c5ea84293cecb28510cf35d1ee3ab56e"\n      },\n      "unique_vertex_count": 161872,\n      "finite_vertices": true,\n      "bounds_mm": [\n        [\n          -18.384294509887695,\n          8.737100601196289\n        ],\n        [\n          -7.487955570220947,\n          6.539113998413086\n        ],\n        [\n          -6.9454193115234375,\n          7.255810737609863\n        ]\n      ],\n      "source_dataset_author": "Salem Al Mosleh",\n      "source_dataset_title": "Code and Data"\n    },\n    {\n      "path": "prior_remeshing/C.PallidusA.stl",\n      "bytes": 146384,\n      "sha256": "d3b55439d3c6a9b8fafc82e6c77dba95aece0e4c9349c5b10020e34a90b6a9e2",\n      "sha1": "391bac12ec59233018ae3a1627cec6ea3ac76108",\n      "md5": "e2798e7bbcd3f8e1542be4923a2f1ac7",\n      "git_blob_sha1": "5c749e149c44592568e8b85a29b343b00989a243",\n      "bytes_unchanged_from_source": true,\n      "triangle_count": 2926,\n      "source_url": "https://doi.org/10.7910/DVN/UQQ6EZ",\n      "download_url": "https://dataverse.harvard.edu/api/access/datafile/6947348",\n      "source_dataset_version": "1.0",\n      "source_file_id": 6947348,\n      "source_archive": "Meshes - Darwins finches.zip",\n      "source_archive_bytes": 2516712452,\n      "source_archive_md5": "73945980cb4bcdc4199a6de6e2968d74",\n      "source_archive_md5_verified": false,\n      "source_path": "Meshes/Darwins Finches/Full Skulls Watertight/C.PallidusA.stl",\n      "zip_crc32": "f93a80c7",\n      "extraction": "HTTP byte ranges; central directory size and member CRC32 checked; full archive not downloaded.",\n      "license": "CC0 1.0",\n      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",\n      "unique_vertex_count": 1465,\n      "finite_vertices": true,\n      "bounds_mm": [\n        [\n          -22.085681915283203,\n          10.153169631958008\n        ],\n        [\n          -9.735052108764648,\n          8.273297309875488\n        ],\n        [\n          -9.756991386413574,\n          8.563048362731934\n        ]\n      ],\n      "source_dataset_author": "Salem Al Mosleh",\n      "source_dataset_title": "Bird Beaks"\n    },\n    {\n      "path": "prior_remeshing/C.flaveolaA.stl",\n      "bytes": 131184,\n      "sha256": "f78302d3501a628fed42d4b856bb064cae9827344037f7c03d9f97cb14439d32",\n      "sha1": "89a492b0883977ec7eb2d6bfb271d56276f6518e",\n      "md5": "e5b5fd2b6d9cbf901f955a4c1955f8c8",\n      "git_blob_sha1": "fd129d8016aefed36d1b084e9156c73fb4e4ad9b",\n      "bytes_unchanged_from_source": true,\n      "triangle_count": 2622,\n      "source_url": "https://doi.org/10.7910/DVN/UQQ6EZ",\n      "download_url": "https://dataverse.harvard.edu/api/access/datafile/6947348",\n      "source_dataset_version": "1.0",\n      "source_file_id": 6947348,\n      "source_archive": "Meshes - Darwins finches.zip",\n      "source_archive_bytes": 2516712452,\n      "source_archive_md5": "73945980cb4bcdc4199a6de6e2968d74",\n      "source_archive_md5_verified": false,\n      "source_path": "Meshes/DF Relatives/Full Skulls Watertight/C.flaveolaA.stl",\n      "zip_crc32": "1a3402da",\n      "extraction": "HTTP byte ranges; central directory size and member CRC32 checked; full archive not downloaded.",\n      "license": "CC0 1.0",\n      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",\n      "unique_vertex_count": 1313,\n      "finite_vertices": true,\n      "bounds_mm": [\n        [\n          -19.48737335205078,\n          7.736988544464111\n        ],\n        [\n          -6.010188102722168,\n          5.969338417053223\n        ],\n        [\n          -5.23110294342041,\n          5.652112007141113\n        ]\n      ],\n      "source_dataset_author": "Salem Al Mosleh",\n      "source_dataset_title": "Bird Beaks"\n    }\n  ]\n}\n'
+          from pathlib import Path
+          import concurrent.futures, hashlib, json, struct, urllib.request, zlib, os
+
+          ROOT = Path.cwd()
+          OUT = ROOT / 'data/figure_inputs'
+          META = Path(os.environ['RUNNER_TEMP']) / 'figure-input-metadata'
+          META.mkdir(exist_ok=True)
+          HEADERS = {'User-Agent': 'Mozilla/5.0', 'Accept': '*/*'}
+
+          def request(url, start=None, end=None):
+              headers = HEADERS.copy()
+              if start is not None:
+                  headers['Range'] = f'bytes={start}-{end}'
+              for attempt in range(3):
+                  try:
+                      with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=90) as r:
+                          if start is not None:
+                              assert r.status == 206, (r.status, dict(r.headers))
+                              assert r.headers['Content-Range'].startswith(f'bytes {start}-{end}/'), r.headers['Content-Range']
+                          data = r.read()
+                          if start is not None:
+                              assert len(data) == end - start + 1
+                          return data
+                  except Exception:
+                      if attempt == 2: raise
+
+          def save(rel, data, expected, algorithm='sha256'):
+              digest = hashlib.new(algorithm, data).hexdigest()
+              assert digest == expected, (rel, digest, expected)
+              path = OUT / rel
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(data)
+              entry = {'path': rel, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest(),
+                       'sha1': hashlib.sha1(data).hexdigest(), 'md5': hashlib.md5(data).hexdigest(),
+                       'git_blob_sha1': hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest(),
+                       'bytes_unchanged_from_source': True}
+              if rel.endswith('.stl'):
+                  count = struct.unpack_from('<I', data, 80)[0]
+                  assert 84 + count*50 == len(data), (rel, count, len(data))
+                  entry['triangle_count'] = count
+              print(json.dumps(entry), flush=True)
+              return entry
+
+          def photo():
+              url = 'https://upload.wikimedia.org/wikipedia/commons/f/f3/Camarhynchus_pallidus_12789263.jpg'
+              e = save('photo/C.pallidus.jpg', request(url), 'ad4d26a930222163d515ba26a3d94879a8b4a1b2', 'sha1')
+              e.update(source_url='https://commons.wikimedia.org/wiki/File:Camarhynchus_pallidus_12789263.jpg',
+                  download_url=url, author='Julien Renoult', date='2017-03-27',
+                  license='CC BY 4.0', license_url='https://creativecommons.org/licenses/by/4.0/',
+                  original_source='https://www.inaturalist.org/photos/12789263', width=2048,height=1365,
+                  processing='Original JPEG retained unchanged; existing figure script applies a crop when rendering.')
+              return [e]
+
+          def raw():
+              url = 'https://dataverse.harvard.edu/api/access/datafile/5193531'
+              data = request(url)
+              assert len(data) == 16181434
+              assert hashlib.md5(data).hexdigest() == 'c5ea84293cecb28510cf35d1ee3ab56e'
+              e = save('raw_meshes/P2.InornataA.stl', data, '010fbd5edb1ccd8cc0e2fa821b1818ac042228309ef3f66eba006ab8c8f44dc8')
+              e.update(source_url='https://doi.org/10.7910/DVN/IHODX1', download_url=url,
+                  source_dataset_version='2.0', source_file_id=5193531,
+                  source_path='Meshes/Full Skulls STL/P2.InornataA.stl',
+                  license='CC0 1.0', license_url='https://creativecommons.org/publicdomain/zero/1.0/',
+                  source_checksum={'algorithm':'MD5','value':'c5ea84293cecb28510cf35d1ee3ab56e'})
+              return [e]
+
+          def prior():
+              url = 'https://dataverse.harvard.edu/api/access/datafile/6947348'
+              total = 2516712452
+              tailstart = total - 65557
+              tail = request(url,tailstart,total-1)
+              pos = tail.rfind(b'PK\x05\x06')
+              assert pos >= 0
+              record = struct.unpack_from('<4s4H2IH',tail,pos)
+              _,disk,cd_disk,disk_n,n,cd_size,cd_offset,comment_size = record
+              assert disk == cd_disk == 0 and disk_n == n
+              central = request(url,cd_offset,cd_offset+cd_size-1)
+              (META/'prior-zip-central-directory.bin').write_bytes(central)
+              wanted = {
+                  'Meshes/Darwins Finches/Full Skulls Watertight/C.PallidusA.stl':('prior_remeshing/C.PallidusA.stl',146384,'d3b55439d3c6a9b8fafc82e6c77dba95aece0e4c9349c5b10020e34a90b6a9e2','f93a80c7'),
+                  'Meshes/DF Relatives/Full Skulls Watertight/C.flaveolaA.stl':('prior_remeshing/C.flaveolaA.stl',131184,'f78302d3501a628fed42d4b856bb064cae9827344037f7c03d9f97cb14439d32','1a3402da')}
+              found=[]; p=0
+              while p<len(central):
+                  r=struct.unpack_from('<4s6H3I5H2I',central,p)
+                  assert r[0] == b'PK\x01\x02'
+                  _,made,needed,flags,method,mtime,mdate,crc,csize,usize,nlen,xlen,clen,diskno,iattr,eattr,offset=r
+                  name=central[p+46:p+46+nlen].decode('utf-8' if flags&2048 else 'cp437')
+                  p += 46+nlen+xlen+clen
+                  if name not in wanted:continue
+                  rel,size,expected,expected_crc=wanted[name]
+                  assert usize==size and f'{crc:08x}'==expected_crc
+                  local=request(url,offset,offset+29)
+                  lr=struct.unpack('<4s5H3I2H',local)
+                  assert lr[0]==b'PK\x03\x04'
+                  data_offset=offset+30+lr[-2]+lr[-1]
+                  packed=request(url,data_offset,data_offset+csize-1)
+                  data=zlib.decompress(packed,-15) if method==8 else packed
+                  assert method in [0,8] and len(data)==usize and zlib.crc32(data)==crc
+                  e=save(rel,data,expected)
+                  e.update(source_url='https://doi.org/10.7910/DVN/UQQ6EZ', download_url=url,
+                      source_dataset_version='1.0', source_file_id=6947348,
+                      source_archive='Meshes - Darwins finches.zip', source_archive_bytes=total,
+                      source_archive_md5='73945980cb4bcdc4199a6de6e2968d74',
+                      source_archive_md5_verified=False,
+                      source_path=name, zip_crc32=expected_crc,
+                      extraction='HTTP byte ranges; central directory size and member CRC32 checked; full archive not downloaded.',
+                      license='CC0 1.0',license_url='https://creativecommons.org/publicdomain/zero/1.0/')
+                  found.append(e)
+              assert len(found)==2
+              return found
+
+          if __name__ == '__main__':
+              entries=[]
+              with concurrent.futures.ThreadPoolExecutor(max_workers=3) as ex:
+                  for rows in ex.map(lambda f:f(),[photo,raw,prior]):entries.extend(rows)
+              assert len(entries) == 4
+              (OUT/'sources.json').write_text(SOURCE_MANIFEST)
+
+          PYTHON
+      - name: Commit the verified inputs
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- data/figure_inputs/photo/C.pallidus.jpg data/figure_inputs/raw_meshes/P2.InornataA.stl data/figure_inputs/prior_remeshing/C.PallidusA.stl data/figure_inputs/prior_remeshing/C.flaveolaA.stl data/figure_inputs/sources.json
+          git diff --cached --check
+          git commit -m 'Restore four original figure inputs with verified source provenance'
+          git push origin HEAD:refs/heads/main

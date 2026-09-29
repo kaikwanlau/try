@@ -4,35 +4,42 @@
 <body><a class="skip" href="#main">Skip to content</a><div class="shell">
 <header class="masthead"><a class="brand" href="index.html">skull / morphology<small>GEOMETRY · BIOLOGY · CODE</small></a>
 <nav aria-label="Main navigation"><a href="index.html">Overview</a><a href="start-here.html">Start here</a><a class="repo-link" href="https://github.com/kaikwanlau/skull-morphology">GitHub ↗</a></nav></header>
-<div class="article-layout"><aside class="article-nav" aria-label="Guide contents"><a href="index.html">Project overview</a><a href="start-here.html">Start here</a><a href="reproduce.html">Reproduce</a><a href="reference.html">Script reference</a><a href="data.html">Data sources</a><a href="citation.html">Citation</a></aside><main class="article" id="main"><h1 id="datafigure_inputs">data/figure_inputs/</h1>
-<p>Inputs that <code>5_figures/figure.py</code> uses for three panels and that are not part of the mesh data.
-Copy them here once. Until then, figure.py leaves those panels as labelled blanks and draws the
-rest of each figure normally.</p>
+<div class="article-layout"><aside class="article-nav" aria-label="Guide contents"><a href="index.html">Project overview</a><a href="start-here.html">Start here</a><a href="reproduce.html">Reproduce</a><a href="reference.html">Script reference</a><a href="data.html">Data sources</a><a href="citation.html">Citation</a></aside><main class="article" id="main"><h1 id="figure-inputs-and-availability">Figure inputs and availability</h1>
+<p>The fitting and statistical analyses use the prepared meshes and measurement workbooks in <code>data/</code>. The files below are separate inputs for the photograph, raw-scan illustration and comparison with earlier remeshing results.</p>
+<p><strong>The original raw scan used in Fig. 1(b) is currently unavailable.</strong> That panel cannot be regenerated from this release. The photograph and two earlier-remeshing meshes are also absent from the release; their status is listed separately below.</p>
 <table>
 <thead>
 <tr>
-<th>File</th>
-<th>Used for</th>
+<th style="text-align: left;">Expected file</th>
+<th style="text-align: left;">Used for</th>
+<th style="text-align: left;">Current availability</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>photo/C.pallidus.png</code></td>
-<td>Fig 1(a), the photograph of <em>Camarhynchus pallidus</em> (Wikimedia Commons, CC BY 4.0)</td>
+<td style="text-align: left;"><code>photo/C.pallidus.png</code></td>
+<td style="text-align: left;">Fig. 1(a), photograph of <em>Camarhynchus pallidus</em> (Wikimedia Commons, CC BY 4.0)</td>
+<td style="text-align: left;">Not included</td>
 </tr>
 <tr>
-<td><code>raw_meshes/P2.InornataA.stl</code></td>
-<td>Fig 1(b), the raw scan mesh of <em>Pinaroloxias inornata</em></td>
+<td style="text-align: left;"><code>raw_meshes/P2.InornataA.stl</code></td>
+<td style="text-align: left;">Fig. 1(b), original raw scan of <em>Pinaroloxias inornata</em></td>
+<td style="text-align: left;">Currently unavailable</td>
 </tr>
 <tr>
-<td><code>prior_remeshing/C.PallidusA.stl</code></td>
-<td>Fig S1, left column: the remeshing of the earlier studies</td>
+<td style="text-align: left;"><code>prior_remeshing/C.PallidusA.stl</code></td>
+<td style="text-align: left;">Fig. S1, earlier-remeshing comparison for <em>Camarhynchus pallidus</em></td>
+<td style="text-align: left;">Not included</td>
 </tr>
 <tr>
-<td><code>prior_remeshing/C.flaveolaA.stl</code></td>
-<td>Fig S1, left column: the remeshing of the earlier studies</td>
+<td style="text-align: left;"><code>prior_remeshing/C.flaveolaA.stl</code></td>
+<td style="text-align: left;">Fig. S1, earlier-remeshing comparison for <em>Coereba flaveola</em></td>
+<td style="text-align: left;">Not included</td>
 </tr>
 </tbody>
-</table></main></div>
+</table>
+<p><code>5_figures/figure.py</code> leaves the affected panels as labelled blanks and continues with the available inputs. A completed figure command therefore does not mean that every panel of the paper has been reproduced.</p>
+<p>The prepared meshes remain available for fitting, measurements and statistical analyses. They represent a later processing stage and must not be substituted for the original raw scan or the earlier-remeshing comparison meshes.</p>
+<p>If the original figure inputs are recovered, place them at the paths above and rerun the figure script. No changes to the fitting code are needed.</p></main></div>
 <footer class="footer"><span>SKULL / MORPHOLOGY — RESEARCH GUIDE</span><a href="index.html">Back to the visual guide ↑</a></footer>
 </div></body></html>

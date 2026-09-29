@@ -61,6 +61,8 @@ The main analyses use 100 skulls of Darwin’s finches and their relatives. Appl
 
 Two rodent skulls and four human crania are included as exploratory examples. The rodent fits did not identify the orbits. The human fits used adjusted settings, and none met both S4 quality criteria. See [data sources and scope](data/README.md) for details.
 
+The fitting and statistical analyses start from the released prepared meshes. The original raw scan used in Fig. 1(b) is currently unavailable, and some other figure inputs are not included. The affected figure panels are left as labelled blanks; see [figure inputs and availability](data/figure_inputs/README.md).
+
 ## Repository structure
 
 | Folder | Purpose |

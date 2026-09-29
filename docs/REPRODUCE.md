@@ -48,7 +48,7 @@ The verifier compares against values **written into the script**. It does not re
 
 The verifier can install missing Python dependencies automatically; run it inside the project environment. With `USE_TESTED_VERSIONS = True`, it can change installed package versions. With `QUICK_RUN = True`, it uses stored workbook values instead of refitting the meshes, so that mode is not independent mesh-to-table verification.
 
-The workflow starts from the prepared meshes; it does not rerun the original remeshing and anatomical alignment. Some comments in the supplied verifier still refer to three rodents; this release contains two. The dataset inventory is the authority for which files are actually present.
+The workflow starts from the prepared meshes; it does not rerun the original remeshing and anatomical alignment. The original raw scan used in Fig. 1(b) is currently unavailable. Its absence does not prevent fitting the released prepared meshes or running the statistical analyses.
 
 ## Figures and media
 
@@ -60,7 +60,9 @@ python 5_figures/figure.py --refit
 
 The figure script caches its measurements. Use `--refit` after changing input meshes or fitting settings. A full figure build may take substantially longer than the one-skull example.
 
-Some source panels are not bundled: the original photograph, one raw mesh and two earlier-remeshing meshes. Until those inputs are supplied, the figure script intentionally leaves those panels as labelled blanks. See [figure inputs](../data/figure_inputs/README.md); a completed command does not guarantee every panel is populated.
+Exact regeneration of every figure panel is not supported by the current inputs. The raw scan for Fig. 1(b) is currently unavailable; the photograph for Fig. 1(a) and two earlier-remeshing meshes for Fig. S1 are also not included. The figure script leaves affected panels as labelled blanks and continues with the available inputs. See [figure inputs and availability](../data/figure_inputs/README.md).
+
+Use the released prepared meshes for the analysis workflow. Substituting those meshes into the missing raw-scan or earlier-remeshing panels would misrepresent the processing stages being compared.
 
 To regenerate the original short animation:
 

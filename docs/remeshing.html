@@ -29,11 +29,14 @@ setup_remeshing('RebuildMex', true)
 <p>For an offline installation, obtain the matching MeshFix binary from the <a href="https://github.com/fangq/iso2mesh/tree/4a0ca5b65d5d292b83b40fd0fdcb742625e573a6/bin">pinned iso2mesh folder</a>, place it in <code>code/iso2mesh/bin/</code>, and run <code>setup_remeshing('DownloadMeshFix', false)</code>. On Windows, rename <code>meshfix_x86-64.exe</code> to <code>meshfix.exe</code>. MeshFix is a separate executable, despite the <code>.mex*</code> extensions used on macOS and Linux.</p>
 <h2 id="use-the-python-workflow">Use the Python workflow</h2>
 <p>Put raw scans in <code>1_remeshing/dataset_CT/</code>. Install the Python requirements, then run this command from the repository root:</p>
-<pre><code class="language-bash">python 1_remeshing/remesh_in_pycharm.py --once --no-show
+<pre><code class="language-bash">python 1_remeshing/remesh_in_pycharm.py --once
 </code></pre>
-<p>The wrapper finds this MATLAB folder automatically. It accepts STL, PLY, OBJ and OFF inputs, converts them to STL when needed, remeshes them, and runs the orbital fitting step. It uses MATLAB Engine when available, otherwise <code>matlab -batch</code>. If MATLAB is not on your system path, pass <code>--matlab</code> with the full path to the MATLAB executable.</p>
-<p><code>--no-show</code> saves inspection images without opening windows. <code>--overwrite</code> refreshes the staged raw inputs, remeshes them and refits the meshes in the output folder, including previously recorded fits. MATLAB errors, missing output meshes and fitting-process errors return a nonzero exit status. A successful process still needs a check of the output geometry and anatomical fit.</p>
-<p>The human remeshing wrapper exposes exploratory fitting settings near the top of its Python file. To reproduce the four released human fits with the paper's 10–50% search band and 2–60 mm radius range, use the human fitting script in <code>2_fitting/</code>.</p>
+<p>The wrapper finds this MATLAB folder automatically. It accepts STL, PLY, OBJ and OFF inputs, converts them to STL when needed, and writes remeshed STL files and run logs. It stops after remeshing. It uses MATLAB Engine when available, otherwise <code>matlab -batch</code>. If MATLAB is not on your system path, pass <code>--matlab</code> with the full path to the MATLAB executable.</p>
+<p><code>--overwrite</code> refreshes the staged raw inputs and remeshes them again. MATLAB errors and missing output meshes return a nonzero exit status. A successful process still needs a check of the output geometry.</p>
+<p>The human wrapper performs the same remeshing steps with a default remeshing parameter of 60. Fitting is a separate operation in <code>2_fitting/</code>. To inspect a prepared mesh after remeshing, run:</p>
+<pre><code class="language-bash">python 2_fitting/check_orbit.py --folder 1_remeshing/dataset_remeshed --results 2_fitting/output/check_orbit --no-show
+</code></pre>
+<p>The human fitting script in <code>2_fitting/</code> reproduces the released human fits with the paper's 10–50% search band and 2–60 mm radius range.</p>
 <p>For specimen-specific parameters, create <code>1_remeshing/params.csv</code>:</p>
 <pre><code class="language-csv">filename,para,reason
 specimen.stl,60,chosen after inspecting the surface

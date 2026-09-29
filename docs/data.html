@@ -48,10 +48,6 @@ them through <code>paths.py</code> in the repository root.</p>
 <td>53 per-specimen records for SI Section S4: 51 birds and 2 rodents</td>
 </tr>
 <tr>
-<td><code>remeshing_parameters.csv</code></td>
-<td>remeshing settings for the specimens whose filename suffixes were removed</td>
-</tr>
-<tr>
 <td><code>figure_inputs/</code></td>
 <td>inputs used only by <code>5_figures/figure.py</code></td>
 </tr>
@@ -64,11 +60,11 @@ them through <code>paths.py</code> in the repository root.</p>
 <p>The <strong>51 additional bird skulls</strong> (42 Hawaiian honeycreepers and 9 cardueline relatives) were analysed with the finch fitting settings. In Supporting Information Section S4, 38 of the 51 orbital fits meet both quality criteria: at least 40 inliers and an RMS residual no greater than 10% of the fitted radius. The other 13 are flagged for review. Every fit was also inspected visually.</p>
 <p>The <strong>two rodent skulls and four human crania</strong> are exploratory examples used to examine the method’s scope and limitations:</p>
 <ul>
-<li>In the rodents, the fitted spheres lie outside the orbits. The paper therefore does not report orbital measurements for these specimens.</li>
+<li>In the rodents, the fitted spheres lie outside the orbits. Orbital measurement fields are therefore blank in the released workbook and generated measurement files, with an explanatory status. Specimen identities, skull dimensions and mesh topology are retained.</li>
 <li>In the human crania, the search band was changed to 10–50% of skull length and the radius range to 2–60 mm. The fitted spheres lie in the orbits, but none of the four fits meets both S4 quality criteria.</li>
 </ul>
 <p>These are groups of specimens; all the supplied surface meshes use the STL format. Their inclusion does not imply that the method gives reliable orbital measurements for every specimen or taxon.</p>
-<p>For the rodent examples in the figure script and numerical verifier, principal-axis alignment uses all vertices of the supplied mesh. The largest connected component is then retained for fitting. The rodent rows in <code>Dataset_other_taxa.xlsx</code> follow this order. <code>2_fitting/fit_sphere_batch.py</code> is a separate batch workflow with its own rodent settings; use <code>6_verification/verify_all.py</code> to reproduce the S4 values.</p>
+<p>For the rodent diagnostic figures, principal-axis alignment uses all vertices of the supplied mesh. The largest connected component is then retained for fitting. The spheres illustrate the method's limitation and are not exported as orbital measurements. Use <code>6_verification/verify_all.py</code> to reproduce the avian S4 measurements and the two-rodent inventory.</p>
 <h2 id="sources-and-scope">Sources and scope</h2>
 <p>The bird scans were acquired and processed in the work of Tokita et al. (2017), Al-Mosleh et al. (2021) and Mosleh et al. (2023), and were remeshed for this study. The honeycreeper and cardueline collections come from the Tokita et al. dataset. See the accompanying paper for the specimen lists and preparation method.</p>
 <p>The two rodent examples are <em>Peromyscus gossypinus</em> and <em>P. simulus</em> from the openVertebrate project. The four human examples are drawn from TotalSegmentator (s1397), the Arothron example skull, BodyParts3D and a NiiVue sample head CT. Their preparation and fitting settings are described in the paper.</p>
@@ -101,6 +97,6 @@ them through <code>paths.py</code> in the repository root.</p>
 <p>Preserve the original source attributions and check the terms attached to each source dataset before redistribution. The code’s Apache 2.0 license should not be treated as a new license grant for all third-party scans. The source article and Supporting Information contain the fuller provenance references.</p>
 <h2 id="using-the-tables">Using the tables</h2>
 <p>The statistics scripts read the released workbooks in this folder. The fitting scripts write new workbooks under their output folders; those do not automatically replace the released tables. Keep your own inputs in a separate folder and retain the measurement version used in an analysis.</p>
-<p>Specimen names retain their original spelling and capitalization. Remeshing settings are recorded in <code>remeshing_parameters.csv</code> rather than in the filenames. See the paper’s specimen lists for taxonomic details.</p></main></div>
+<p>Specimen names retain their original spelling and capitalization. Measurement tables omit remeshing-parameter columns. Remeshing input settings and run logs remain part of the remeshing workflow; the paper's SI specimen tables provide the finch preprocessing information. See the paper’s specimen lists for taxonomic details.</p></main></div>
 <footer class="footer"><span>SKULL / MORPHOLOGY — RESEARCH GUIDE</span><a href="index.html">Back to the visual guide ↑</a></footer>
 </div></body></html>

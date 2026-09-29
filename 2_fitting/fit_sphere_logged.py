@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-import argparse, glob, math, os, re
+import argparse, glob, math, os, re, sys
+from pathlib import Path
 import numpy as np, pandas as pd, trimesh
 from scipy.optimize import minimize
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from measurement_exports import export_measurements, is_rodent_filename
 
 
 def sphere_loss(params, points):
@@ -31,17 +35,9 @@ def fit_sphere_iteratively(points, max_iterations=3, outlier_std_dev=2.0):
     return fin.x[:3], fin.x[3], cur
 
 
-def split_name(name, folder=None):
-    mm = re.match(r'^(.*)_p(\d+)\.stl$', name, flags=re.IGNORECASE)
-    if mm:
-        return mm.group(1), int(mm.group(2))
-    parameter = None
-    if folder is not None:
-        parameters_file = os.path.join(os.path.dirname(os.path.abspath(folder)), 'remeshing_parameters.csv')
-        if os.path.isfile(parameters_file):
-            parameters = pd.read_csv(parameters_file).set_index('filename')['remeshing_parameter'].to_dict()
-            parameter = parameters.get(name)
-    return name[:-4], parameter
+def split_name(name):
+    match = re.match(r'^(.*)_p(\d+)\.stl$', name, flags=re.IGNORECASE)
+    return match.group(1) if match else name[:-4]
 
 
 def accept(rule, r, L, rms, c, ext, rmin=2.0, rmax=6.0):
@@ -139,7 +135,8 @@ def main():
     if a.files: paths = [p for p in paths if os.path.basename(p) in set(a.files)]
     for fp in paths:
         name = os.path.basename(fp)
-        specimen, para = split_name(name, a.folder)
+        specimen = split_name(name)
+        rodent = is_rodent_filename(name)
         first_fit = None
         m = trimesh.load_mesh(fp)
         comps = m.split(only_watertight=False)
@@ -159,7 +156,7 @@ def main():
 
         ok = False; log = []
         for att, s in enumerate(seeds):
-            row = dict(filename=name, specimen=specimen, para=para, attempt=att + 1, seed_vertex=int(s), L=L, width_y=ext[1])
+            row = dict(filename=name, specimen=specimen, attempt=att + 1, seed_vertex=int(s), L=L, width_y=ext[1])
             if not valid[s]:
                 row['status'] = 'seed-invalid'; attempts.append(row); log.append(f'a{att+1}:seed-invalid'); continue
             idx = np.array([])
@@ -183,7 +180,7 @@ def main():
             attempts.append(row)
             if not passed:
                 log.append(f'a{att+1}:r={r:.2f},r/L={r/L:.3f},rms/r={rms/r:.3f},cy/hw={abs(c[1])/(ext[1]/2):.2f}'); continue
-            accepted.append(dict(filename=name, specimen=specimen, para=para, length_x=ext[0], width_y=ext[1], height_z=ext[2], L=L,
+            accepted.append(dict(filename=name, specimen=specimen, length_x=ext[0], width_y=ext[1], height_z=ext[2], L=L,
                                  sphere_radius=r, sphere_center_x=c[0], sphere_center_y=c[1], sphere_center_z=c[2],
                                  curvature=1 / r, r_over_L=r / L, kappa_tilde=L / r, seed_attempt=att + 1,
                                  n_candidates=len(idx), n_inliers=len(inl), rms_residual_mm=rms,
@@ -191,38 +188,46 @@ def main():
                                  fit_side='y<0' if c[1] < 0 else 'y>0', rejected_attempts=';'.join(log)))
             ok = True; break
         if not ok:
-            failed.append(f'{name}\t' + ';'.join(log))
+            failed.append(f'{name}\t' + ('no orbital measurements; diagnostic fit only' if rodent else ';'.join(log)))
+        if ok:
+            acc = accepted[-1]
+            fit_title = ("DIAGNOSTIC FIT ONLY - no orbital measurements" if rodent else
+                         f"ACCEPTED seed {acc['seed_attempt']}  r={acc['sphere_radius']:.2f} mm  r/L={acc['r_over_L']:.3f}  "
+                         f"inliers={acc['n_inliers']}  RMS/r={acc['rms_over_radius']:.3f}")
+            render_center = np.array([acc['sphere_center_x'], acc['sphere_center_y'], acc['sphere_center_z']])
+            render_radius, render_inliers, render_seed = acc['sphere_radius'], inl, int(s)
+            render_suffix = '.png'
+        elif first_fit is not None:
+            render_center, render_radius, render_inliers, render_seed, att, rms = first_fit
+            fit_title = ("DIAGNOSTIC FIT ONLY - no orbital measurements" if rodent else
+                         f"FAILED - showing attempt {att}: r={render_radius:.2f} mm  r/L={render_radius/L:.3f}  "
+                         f"inliers={len(render_inliers)}  RMS/r={rms/render_radius:.3f}")
+            render_suffix = '_FAILED.png'
+        else:
+            render_center, render_radius, render_inliers, render_seed = None, None, None, int(seeds[0])
+            fit_title = ("NO ORBITAL MEASUREMENTS - no diagnostic fit" if rodent else
+                         'FAILED - no attempt produced a fit (components < 20 points)')
+            render_suffix = '_FAILED.png'
         if a.interactive:
-            if ok:
-                acc = accepted[-1]
-                show_interactive(m, np.array([acc['sphere_center_x'], acc['sphere_center_y'], acc['sphere_center_z']]), acc['sphere_radius'],
-                                 inl, int(s), name, f"ACCEPTED seed {acc['seed_attempt']}  r={acc['sphere_radius']:.2f} mm  r/L={acc['r_over_L']:.3f}  "
-                                 f"inliers={acc['n_inliers']}  RMS/r={acc['rms_over_radius']:.3f}", slices=not a.no_slices)
-            elif first_fit is not None:
-                c, r, inl, sv, att, rms = first_fit
-                show_interactive(m, c, r, inl, sv, name, f"FAILED - showing attempt {att}: r={r:.2f} mm  r/L={r/L:.3f}  inliers={len(inl)}  RMS/r={rms/r:.3f}", slices=not a.no_slices)
-            else:
-                show_interactive(m, None, None, None, int(seeds[0]), name, 'FAILED - no attempt produced a fit', slices=False)
+            show_interactive(m, render_center, render_radius, render_inliers, render_seed, name, fit_title,
+                             slices=not a.no_slices and render_center is not None)
         if a.render:
-            if ok:
-                acc = accepted[-1]
-                render(m, np.array([acc['sphere_center_x'], acc['sphere_center_y'], acc['sphere_center_z']]), acc['sphere_radius'],
-                       inl, int(s), name, f"ACCEPTED seed {acc['seed_attempt']}  r={acc['sphere_radius']:.2f} mm  r/L={acc['r_over_L']:.3f}  "
-                       f"inliers={acc['n_inliers']}  RMS/r={acc['rms_over_radius']:.3f}", os.path.join(a.render, name[:-4] + '.png'))
-            elif first_fit is not None:
-                c, r, inl, sv, att, rms = first_fit
-                render(m, c, r, inl, sv, name, f"FAILED - showing attempt {att}: r={r:.2f} mm  r/L={r/L:.3f}  inliers={len(inl)}  RMS/r={rms/r:.3f}",
-                       os.path.join(a.render, name[:-4] + '_FAILED.png'))
-            else:
-                render(m, None, None, None, int(seeds[0]), name, 'FAILED - no attempt produced a fit (components < 20 points)',
-                       os.path.join(a.render, name[:-4] + '_FAILED.png'))
-        print(f'{name}: ' + ('accepted at seed %d, r=%.3f' % (accepted[-1]['seed_attempt'], accepted[-1]['sphere_radius']) if ok else 'FAILED'))
+            render(m, render_center, render_radius, render_inliers, render_seed, name, fit_title,
+                   os.path.join(a.render, name[:-4] + render_suffix))
+        if rodent:
+            print(f'{name}: no orbital measurements; diagnostic fit only')
+        else:
+            print(f'{name}: ' + ('accepted at seed %d, r=%.3f' % (accepted[-1]['seed_attempt'], accepted[-1]['sphere_radius']) if ok else 'FAILED'))
 
-    pd.DataFrame(accepted).to_excel(a.out_prefix + '_accepted.xlsx', index=False)
-    pd.DataFrame(attempts).to_csv(a.out_prefix + '_attempts.csv', index=False)
+    export_measurements(pd.DataFrame(accepted)).to_excel(a.out_prefix + '_accepted.xlsx', index=False)
+    export_measurements(pd.DataFrame(attempts)).to_csv(a.out_prefix + '_attempts.csv', index=False)
     with open(a.out_prefix + '_failed.txt', 'w') as f:
         f.write('\n'.join(failed))
-    print(f'\nrule={a.rule} target={a.target} ball={a.ball} roi={a.roi}: accepted {len(accepted)}, failed {len(failed)}')
+    n_accepted = sum(not is_rodent_filename(row['filename']) for row in accepted)
+    n_failed = sum(not is_rodent_filename(line.split('\t')[0]) for line in failed)
+    n_rodents = sum(is_rodent_filename(os.path.basename(path)) for path in paths)
+    print(f'\nrule={a.rule} target={a.target} ball={a.ball} roi={a.roi}: '
+          f'accepted {n_accepted}, failed {n_failed}, without orbital measurements {n_rodents}')
 
 
 if __name__ == '__main__':

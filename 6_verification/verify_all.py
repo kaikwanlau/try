@@ -63,6 +63,7 @@ install_packages()
 
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
+from measurement_exports import export_measurements  # noqa: E402
 import scipy  # noqa: E402
 import statsmodels  # noqa: E402
 import statsmodels.api as sm  # noqa: E402
@@ -437,16 +438,13 @@ def species_of_file(name):
 def other_specimens(folders):
     rows = []
     for path, group, _ in folders:
-        parameters_file = os.path.join(os.path.dirname(path), 'remeshing_parameters.csv')
-        parameters = (pd.read_csv(parameters_file).set_index('filename')['remeshing_parameter'].to_dict()
-                      if os.path.isfile(parameters_file) else {})
         for name in sorted(os.listdir(path)):
             if not name.endswith('.stl'):
                 continue
             parameter = re.search(r'_p(\d+)\.stl$', name)
             rows.append(dict(filename=name, path=os.path.join(path, name), group=group,
                              species=species_of_file(name),
-                             remeshing_parameter=int(parameter.group(1)) if parameter else parameters.get(name, np.nan)))
+                             remeshing_parameter=int(parameter.group(1)) if parameter else np.nan))
     return pd.DataFrame(rows, columns=['filename', 'path', 'group', 'species', 'remeshing_parameter'])
 
 
@@ -1171,16 +1169,10 @@ def run_other_taxa_statistics(O, D, full, rep):
 
     rodents = O[O.group == RODENT]
     rep.check('Rodent skulls', '2', len(rodents))
-    rep.check('Rodent skulls with no accepted numerical sphere fit', '0', rodents.sphere_radius.isna().sum())
-    gossypinus = rodents[rodents.species == 'Peromyscus gossypinus'].sphere_radius.dropna()
-    simulus = rodents[rodents.species == 'Peromyscus simulus'].sphere_radius.dropna()
-    rep.check('P. gossypinus: radius of the accepted sphere (mm)', '4.7', gossypinus.iloc[0] if len(gossypinus) else np.nan)
-    rep.check('P. simulus: radius of the fitted sphere (mm)', '2.0', simulus.iloc[0] if len(simulus) else np.nan)
-    if len(gossypinus):
-        centre = rodents[rodents.sphere_radius.notna()].iloc[0]
-        rep.note(f'The accepted sphere of P. gossypinus is centred on the midline (y = {centre.sphere_center_y:.2f} mm), '
-                 f'i.e. it spans the width of the skull instead of sitting in an orbit. The rodent skulls do not come '
-                 f'from the remeshing of SI Section S1 and are oriented by their principal axes before the fit.')
+    rep.note('The fitted spheres in the two rodent examples do not identify the orbits, so no orbital measurements '
+             'are reported for these specimens. Their orbital measurement cells are intentionally blank. '
+             'The rodent skulls do not come from the remeshing of SI Section S1 and are oriented by their principal '
+             'axes for the exploratory fit illustrations.')
 
 
 def run_bilateral_statistics(D, O, full, rep):
@@ -1914,7 +1906,7 @@ def measure_all(meshes, specimens):
     return pd.DataFrame(rows)
 
 
-OTHER_COLUMNS = ['filename', 'group', 'species', 'remeshing_parameter', 'length_x', 'width_y', 'height_z',
+OTHER_COLUMNS = ['filename', 'group', 'species', 'length_x', 'width_y', 'height_z',
                  'orbit_patch', 'orbit_inliers', 'fit_error_pct', 'sphere_radius', 'curvature',
                  'sphere_center_x', 'sphere_center_y', 'sphere_center_z', 'sphere_center_along_pct',
                  'reliable', 'flag_reason', 'second_sphere_radius', 'second_orbit_inliers', 'second_fit_error_pct',
@@ -1931,7 +1923,8 @@ def measure_other_taxa(folders, out):
         rows.append(record)
         radius = record['sphere_radius']
         print(f'[{i:3d}/{len(specimens)}] {specimen.filename:30s} ' +
-              (f"orbit radius {radius:.4f} mm, {int(record['orbit_inliers'])} inliers, "
+              ('no orbital measurement reported (exploratory rodent example)' if specimen.group == RODENT else
+               f"orbit radius {radius:.4f} mm, {int(record['orbit_inliers'])} inliers, "
                f"fit error {record['fit_error_pct']:.1f}% of the radius" if np.isfinite(radius) else
                'no sphere accepted (no radius between 2 and 6 mm)'), flush=True)
         if SHOW_FITS is True or (isinstance(SHOW_FITS, (list, tuple, set)) and specimen.filename in SHOW_FITS):
@@ -1941,7 +1934,7 @@ def measure_other_taxa(folders, out):
     O['curvature'] = 1.0 / O.sphere_radius
     O['reliable'] = np.where(O.group == RODENT, 'no fit reported', np.where(reliable(O), 'yes', 'flagged'))
     O['flag_reason'] = [flag_reason(row) if row.reliable == 'flagged' else '' for row in O.itertuples()]
-    O[OTHER_COLUMNS].to_excel(os.path.join(out, 'Dataset_other_taxa.xlsx'), index=False)
+    export_measurements(O[OTHER_COLUMNS]).to_excel(os.path.join(out, 'Dataset_other_taxa.xlsx'), index=False)
     return O
 
 
@@ -1988,8 +1981,8 @@ def main():
     else:
         print('Fitting the orbit and the neurocranium of the 100 finch skull meshes (a few minutes).', flush=True)
         measured = measure_all(meshes, specimens)
-        measured.to_csv(os.path.join(out, 'measurements.csv'), index=False)
-        measured[COLUMNS].to_excel(os.path.join(out, 'measurements.xlsx'), index=False)
+        export_measurements(measured).to_csv(os.path.join(out, 'measurements.csv'), index=False)
+        export_measurements(measured[COLUMNS]).to_excel(os.path.join(out, 'measurements.xlsx'), index=False)
         mode = 'full (all measurements recomputed from data/DF_and_their_relatives/*.stl)'
     print('Computing the statistics and comparing them with the paper.', flush=True)
     D = specimens.merge(measured.drop(columns=['curvature'], errors='ignore'), on='filename', validate='one_to_one').merge(

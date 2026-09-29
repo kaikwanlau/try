@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 import argparse, glob, math, os, platform, subprocess, sys
 import pandas as pd
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from measurement_exports import export_measurements, is_rodent_filename
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ap = argparse.ArgumentParser()
-ap.add_argument('--folder', default=os.path.join(HERE, 'remeshed'))
-ap.add_argument('--results', default=os.path.join(HERE, 'results'))
+ap.add_argument('--folder', default=os.path.join(HERE, '..', '1_remeshing', 'dataset_remeshed'))
+ap.add_argument('--results', default=os.path.join(HERE, 'output', 'check_orbit'))
 ap.add_argument('--all', action='store_true', help='re-fit every file, not only new ones')
 ap.add_argument('--no-show', action='store_true')
 ap.add_argument('--rule', default='relative'); ap.add_argument('--target', default='400'); ap.add_argument('--ball', default='2.0')
@@ -47,12 +51,14 @@ for ext in ('accepted.xlsx', 'attempts.csv'):
     new = rd(run + '_' + ext) if os.path.exists(run + '_' + ext) else pd.DataFrame()
     old = rd(P(ext)) if os.path.exists(P(ext)) else pd.DataFrame()
     if len(old): old = old[~old.filename.isin(todo)]
-    both = pd.concat([old, new], ignore_index=True)
+    both = export_measurements(pd.concat([old, new], ignore_index=True))
     (both.to_excel if ext.endswith('xlsx') else both.to_csv)(P(ext), index=False)
     if os.path.exists(run + '_' + ext): os.remove(run + '_' + ext)
 old = [l for l in (open(P('failed.txt')).read().splitlines() if os.path.exists(P('failed.txt')) else []) if l.split('\t')[0] not in todo]
 new = [l for l in (open(run + '_failed.txt').read().splitlines() if os.path.exists(run + '_failed.txt') else []) if l.strip()]
-open(P('failed.txt'), 'w').write('\n'.join(old + new) + ('\n' if old + new else ''))
+failures = [line.split('\t')[0] + '\tno orbital measurements; diagnostic fit only'
+            if is_rodent_filename(line.split('\t')[0]) else line for line in old + new]
+open(P('failed.txt'), 'w').write('\n'.join(failures) + ('\n' if failures else ''))
 if os.path.exists(run + '_failed.txt'): os.remove(run + '_failed.txt')
 
 acc = pd.read_excel(P('accepted.xlsx')) if os.path.exists(P('accepted.xlsx')) else pd.DataFrame()
@@ -63,8 +69,8 @@ for f in files:
     if len(r_): rows.append({**r_.iloc[0].to_dict(), 'status': 'accepted'})
     elif f in failed: rows.append({'filename': f, 'status': 'failed', 'rejected_attempts': failed[f]})
     else: rows.append({'filename': f, 'status': 'not fitted'})
-fin = pd.DataFrame(rows)
-cols = ['filename', 'specimen', 'para', 'status'] + [c for c in fin.columns if c not in ('filename', 'specimen', 'para', 'status')]
+fin = export_measurements(pd.DataFrame(rows))
+cols = ['filename', 'specimen', 'status'] + [c for c in fin.columns if c not in ('filename', 'specimen', 'status')]
 fin = fin[[c for c in cols if c in fin.columns]]
 fin.to_excel(P('final.xlsx'), index=False)
 
@@ -72,7 +78,10 @@ print('\n--- this run ---')
 pngs = []
 for f in todo:
     row = acc[acc.filename == f] if len(acc) else acc
-    if len(row):
+    if is_rodent_filename(f):
+        png = os.path.join(render_dir, f[:-4] + ('.png' if len(row) else '_FAILED.png'))
+        print(f'{f:32s} NO ORBITAL MEASUREMENTS (diagnostic fit only)')
+    elif len(row):
         x = row.iloc[0]; png = os.path.join(render_dir, f[:-4] + '.png')
         verdict = 'looks fine' if x.rms_over_radius <= 0.10 else 'CHECK: high residual (points spilled or flattened orbit)'
         print(f"{f:32s} ACCEPTED  r={x.sphere_radius:.2f} mm  r/L={x.r_over_L:.3f}  inliers={int(x.n_inliers)}  RMS/r={x.rms_over_radius:.3f}  seed {int(x.seed_attempt)}   {verdict}")
@@ -80,7 +89,9 @@ for f in todo:
         png = os.path.join(render_dir, f[:-4] + '_FAILED.png')
         print(f"{f:32s} FAILED    (see results/failed.txt for what each seed gave)")
     if os.path.exists(png): pngs.append(png); print(f"{'':32s} picture: {png}")
-print(f"--- total so far: {(fin.status=='accepted').sum()} accepted, {(fin.status=='failed').sum()} failed of {len(fin)} files in remeshed/ -> results/final.xlsx ---")
+rodent_count = sum(is_rodent_filename(name) for name in files)
+print(f"--- total so far: {(fin.status=='accepted').sum()} accepted, {(fin.status=='failed').sum()} failed, "
+      f"{rodent_count} without orbital measurements of {len(fin)} files -> {P('final.xlsx')} ---")
 if pngs and not a.no_show:
     opener = {'Darwin': ['open'], 'Windows': ['cmd', '/c', 'start', '']}.get(platform.system(), ['xdg-open'])
     for png in pngs:

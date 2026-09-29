@@ -466,6 +466,8 @@ def measure_folder(folder, tag, ellipsoid=False):
 
 
 def get_measurements(refit=False):
+    # Internal diagnostic cache: retain unsuccessful orbit-identification fits
+    # for the limitation figures. These are not exported orbital measurements.
     os.makedirs(_p(CACHE_DIR), exist_ok=True)
     finch_csv = os.path.join(_p(CACHE_DIR), "measurements_finches.csv")
     other_csv = os.path.join(_p(CACHE_DIR), "measurements_other_taxa.csv")

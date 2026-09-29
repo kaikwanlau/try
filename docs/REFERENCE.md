@@ -18,10 +18,8 @@ The MATLAB source is included in `1_remeshing/Remeshing/`. Install MATLAB and it
 | `1_remeshing/Remeshing/setup_remeshing.m` | Checks MATLAB dependencies and installs MeshFix |
 | `1_remeshing/Remeshing/remesh_batch.m` | Voxelizes, repairs and smooths raw STL meshes; writes a log for each batch |
 | `1_remeshing/Remeshing/test_remeshing.m` | Checks the installation with a synthetic sphere |
-| `1_remeshing/remesh_in_pycharm.py` | Watches the raw-input folder, calls MATLAB, then fits and displays a result; `--once` processes the current files and exits |
-| `1_remeshing/remesh_human_head_in_pycharm.py` | Similar workflow using human-cranium settings |
-| `1_remeshing/check_orbit.py` | Orbital fit inspection used by the wrappers |
-| `1_remeshing/fit_sphere_logged.py` | Logged orbital fitting used by the wrappers |
+| `1_remeshing/remesh_in_pycharm.py` | Watches the raw-input folder and calls MATLAB to write remeshed STLs and run logs; `--once` processes the current files and exits |
+| `1_remeshing/remesh_human_head_in_pycharm.py` | The same remeshing-only workflow, with a default remeshing parameter of 60 |
 
 The bird wrapper currently sets `PARA_DEFAULT = 40`. It is a tool for new raw inputs, not an automated replay of the specimen-specific preprocessing used to produce the released meshes. Use the already released meshes for the documented reproduction route; document the settings used for new raw scans.
 
@@ -36,8 +34,12 @@ The bird wrapper currently sets `PARA_DEFAULT = 40`. It is a tool for new raw in
 | `2_fitting/fit_sphere_human_head_setting.py` | `paths.HUMAN` | Human-cranium fitting with its own search band and radius limits |
 | `2_fitting/bounding_AABB.py` | A selected supplied skull | Axis-aligned bounding-box visualization |
 | `2_fitting/bounding_OBB.py` | A selected supplied skull | Oriented bounding-box visualization |
+| `2_fitting/check_orbit.py` | A prepared STL folder supplied with `--folder` | Separate fitting and inspection workflow; use `--results` to choose the output folder and `--no-show` to save images without opening windows |
+| `2_fitting/fit_sphere_logged.py` | A prepared STL folder | Logged orbital fitter used by `check_orbit.py`; saves fit diagnostics and inspection images |
 
 Settings are edited near the top of each original script (inside the main block for some scripts). They are not command-line flags unless explicitly documented.
+
+Measurement exports omit remeshing-parameter columns. For the two Peromyscus examples, orbital fitting fields are blank and marked as not identifying an orbit. Diagnostic figures can still show the fitted sphere to illustrate this limitation. The figure script's internal `figure_cache` retains the diagnostic fits needed to redraw those figures; it is not a table of orbital measurements.
 
 ## 3. Statistics
 

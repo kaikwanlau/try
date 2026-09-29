@@ -7,6 +7,9 @@ and redraws output/fit_sphere_batch/images/<stem>.png: 1800x650, left lateral / 
 dorsal, translucent skull + blue wireframe sphere + red inlier points + green
 centre.
 
+Rows without exported orbital measurements (including Peromyscus controls)
+are skipped. Their fit illustrations are produced by fit_sphere_batch.py.
+
 Usage
 -----
 Set STL_DIR / XLSX / OUT_DIR below and press Run in PyCharm, or override
@@ -225,7 +228,7 @@ def main(argv=None) -> int:
             if opt not in df.columns:
                 df[opt] = None
         print(f"  columns: {len(df.columns)}, rows: {len(df)}")
-        rows = df.where(df.notna(), None).to_dict("records")
+        rows = df.astype(object).where(df.notna(), None).to_dict("records")
         if args.filename:
             rows = [r for r in rows if r["filename"] == args.filename]
             if not rows:
@@ -244,6 +247,12 @@ def main(argv=None) -> int:
         args.out_dir.mkdir(parents=True, exist_ok=True)
 
     for row in rows:
+        fit_values = [row["sphere_radius"], row["sphere_center_x"],
+                      row["sphere_center_y"], row["sphere_center_z"]]
+        if any(value is None for value in fit_values) or not np.isfinite(
+                np.asarray(fit_values, dtype=float)).all():
+            print(f"  {row['filename']}: skipped (no exported orbital measurements)")
+            continue
         stl = find_mesh(row["filename"], stl_dirs)
         if stl is None:
             print(f"  !! {row['filename']} not found in any mesh folder")

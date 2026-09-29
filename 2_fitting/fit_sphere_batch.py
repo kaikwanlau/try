@@ -11,6 +11,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths
+from measurement_exports import export_measurements, is_rodent_filename, NO_ORBIT_REASON
 
 
 HERE = Path(__file__).resolve().parent
@@ -343,13 +344,15 @@ if __name__ == "__main__":
 
     if results_list:
         xlsx = OUTPUT_DIR / "measurement_sphere_fitting_ALL.xlsx"
-        pd.DataFrame(results_list, columns=COLUMNS).to_excel(
+        export_measurements(pd.DataFrame(results_list, columns=COLUMNS)).to_excel(
             xlsx, index=False, engine="openpyxl")
         style_header(xlsx)
         print(f"Saved {xlsx}")
 
     with open(OUTPUT_DIR / "failed_files.txt", "w") as fh:
         for name, detail in failed_files_list:
+            if is_rodent_filename(name):
+                detail = NO_ORBIT_REASON
             fh.write(f"{name}\t{detail}\n")
     if failed_files_list:
         print(f"{len(failed_files_list)} failures logged to "

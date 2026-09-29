@@ -102,11 +102,13 @@ Or select that file in PyCharm and press **Run**. By default it saves images wit
 
 | Output in `2_fitting/output/fit_sphere_batch/` | Contents |
 | :--- | :--- |
-| `measurement_sphere_fitting_ALL.xlsx` | Successful numerical fits, measurements and diagnostics |
+| `measurement_sphere_fitting_ALL.xlsx` | Measurements and diagnostic status; rodent orbital measurements are left blank |
 | `images/` | Three-view inspection image for each successful fit |
 | `failed_files.txt` | Files with no numerical fit and rejected seed attempts |
 
 Check the console and failed-file log as well as the workbook. An absent specimen is not a zero measurement. Keep runs in separate copies or move the generated output folder before rerunning if you want to preserve prior results.
+
+The Peromyscus examples do not yield anatomical orbit fits, so their fitted radii, curvature and other orbital fields are omitted from measurement exports. Their rows remain for specimen identification, with an explanatory status. Remeshing settings are recorded by the remeshing step rather than added as measurement columns.
 
 ### 6. Read the measurement columns
 

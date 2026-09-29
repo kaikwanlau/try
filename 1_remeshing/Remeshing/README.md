@@ -39,14 +39,20 @@ For an offline installation, obtain the matching MeshFix binary from the [pinned
 Put raw scans in `1_remeshing/dataset_CT/`. Install the Python requirements, then run this command from the repository root:
 
 ```bash
-python 1_remeshing/remesh_in_pycharm.py --once --no-show
+python 1_remeshing/remesh_in_pycharm.py --once
 ```
 
-The wrapper finds this MATLAB folder automatically. It accepts STL, PLY, OBJ and OFF inputs, converts them to STL when needed, remeshes them, and runs the orbital fitting step. It uses MATLAB Engine when available, otherwise `matlab -batch`. If MATLAB is not on your system path, pass `--matlab` with the full path to the MATLAB executable.
+The wrapper finds this MATLAB folder automatically. It accepts STL, PLY, OBJ and OFF inputs, converts them to STL when needed, and writes remeshed STL files and run logs. It stops after remeshing. It uses MATLAB Engine when available, otherwise `matlab -batch`. If MATLAB is not on your system path, pass `--matlab` with the full path to the MATLAB executable.
 
-`--no-show` saves inspection images without opening windows. `--overwrite` refreshes the staged raw inputs, remeshes them and refits the meshes in the output folder, including previously recorded fits. MATLAB errors, missing output meshes and fitting-process errors return a nonzero exit status. A successful process still needs a check of the output geometry and anatomical fit.
+`--overwrite` refreshes the staged raw inputs and remeshes them again. MATLAB errors and missing output meshes return a nonzero exit status. A successful process still needs a check of the output geometry.
 
-The human remeshing wrapper exposes exploratory fitting settings near the top of its Python file. To reproduce the four released human fits with the paper's 10–50% search band and 2–60 mm radius range, use the human fitting script in `2_fitting/`.
+The human wrapper performs the same remeshing steps with a default remeshing parameter of 60. Fitting is a separate operation in `2_fitting/`. To inspect a prepared mesh after remeshing, run:
+
+```bash
+python 2_fitting/check_orbit.py --folder 1_remeshing/dataset_remeshed --results 2_fitting/output/check_orbit --no-show
+```
+
+The human fitting script in `2_fitting/` reproduces the released human fits with the paper's 10–50% search band and 2–60 mm radius range.
 
 For specimen-specific parameters, create `1_remeshing/params.csv`:
 

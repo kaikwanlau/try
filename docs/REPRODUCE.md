@@ -46,7 +46,7 @@ Read the console and `report.md`. The principal outputs include:
 
 The verifier compares against values **written into the script**. It does not read the newest manuscript automatically. A passing report means agreement with those encoded values; changes to the manuscript must be checked against them separately.
 
-The S4 checks use the revised two-rodent dataset. Rodent meshes are aligned using all vertices before their largest component is selected, matching the figure workflow. S5 checks use the revised bilateral-agreement statements; the removed damaged-versus-intact comparison is excluded. A numerical mismatch gives the verifier a nonzero exit status. The optional PDF also needs a working LaTeX installation; the HTML and numerical outputs do not depend on it.
+The S4 checks use the revised two-rodent inventory. The two rodents are qualitative examples: their orbital measurements are blank in exported tables and excluded from numerical comparison checks. Diagnostic figures can still show the unsuccessful orbit identification. Measurement exports also omit remeshing-parameter columns. S5 checks use the revised bilateral-agreement statements; the removed damaged-versus-intact comparison is excluded. A numerical mismatch gives the verifier a nonzero exit status. The optional PDF also needs a working LaTeX installation; the HTML and numerical outputs do not depend on it.
 
 The verifier can install missing Python dependencies automatically; run it inside the project environment. With `USE_TESTED_VERSIONS = True`, it can change installed package versions. With `QUICK_RUN = True`, it uses stored workbook values instead of refitting the meshes, so that mode is not independent mesh-to-table verification.
 

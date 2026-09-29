@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Remesh raw skull surfaces with MATLAB; fitting is run separately in 2_fitting/."""
 import argparse, glob, io, os, shutil, subprocess, sys, time
 import pandas as pd
 
@@ -8,17 +9,9 @@ PARA = {
 SEED       = 0
 MESHFIX    = True
 RESCALE    = False
-FIT_TARGET = 400
-FIT_BALL   = 2.0
-FIT_RULE   = 'relative'
-FIT_ROI    = (0.10, 0.90)
-FIT_RMIN   = 2.0
-FIT_RMAX   = 60.0
-VIEW       = 'window'
-SHOW_PNG   = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ap = argparse.ArgumentParser()
+ap = argparse.ArgumentParser(description=__doc__)
 ap.add_argument('--raw', default=os.path.join(HERE, 'dataset_CT'))
 ap.add_argument('--out', default=os.path.join(HERE, 'dataset_remeshed'))
 ap.add_argument('--remeshing-dir', default=os.path.join(HERE, 'Remeshing'))
@@ -26,17 +19,9 @@ ap.add_argument('--params', default=os.path.join(HERE, 'params.csv'))
 ap.add_argument('--matlab', default='matlab', help='matlab binary, used only if the engine is unavailable')
 ap.add_argument('--once', action='store_true', help='process what is there now and exit instead of watching')
 ap.add_argument('--overwrite', action='store_true', help='redo skulls whose remeshed STL already exists')
-ap.add_argument('--no-show', action='store_true')
+# Accepted for existing launch commands; remeshing does not open fitting windows.
+ap.add_argument('--no-show', action='store_true', help=argparse.SUPPRESS)
 a = ap.parse_args()
-
-_suffix = ''
-if tuple(round(v, 4) for v in FIT_ROI) != (0.30, 0.70):
-    _suffix += f'_roi{round(FIT_ROI[0] * 100):d}-{round(FIT_ROI[1] * 100):d}'
-if FIT_RULE == 'mm' and (FIT_RMIN, FIT_RMAX) != (2.0, 6.0):
-    _suffix += f'_r{FIT_RMIN:g}-{FIT_RMAX:g}'
-RESULTS = os.path.join(HERE, 'results' + _suffix)
-print(f'fit settings: rule {FIT_RULE}, band {FIT_ROI[0]:.2f}-{FIT_ROI[1]:.2f} of the length'
-      + (f', radius {FIT_RMIN:g}-{FIT_RMAX:g} mm' if FIT_RULE == 'mm' else '') + f' -> {os.path.basename(RESULTS)}/')
 
 MESH_EXT = ('.stl', '.ply', '.obj', '.off')
 def meshes(folder): return sorted(f for f in glob.glob(os.path.join(folder, '*')) if f.lower().endswith(MESH_EXT))
@@ -53,7 +38,7 @@ def write_params_csv():
     rows = {}
     if os.path.isfile(a.params):
         for r in pd.read_csv(a.params, dtype={'filename': str}).itertuples(): rows[str(r.filename).strip()] = (int(r.para), getattr(r, 'reason', ''))
-    for k, v in PARA.items(): rows[k] = (int(v), 'set in remesh_in_pycharm.py')
+    for k, v in PARA.items(): rows[k] = (int(v), 'set in remesh_human_head_in_pycharm.py')
     for f in meshes(a.raw):
         rows.setdefault(stl_name(f), (PARA_DEFAULT, 'default'))
     p = os.path.join(a.out, '_params_effective.csv')
@@ -109,25 +94,6 @@ def remesh(stl_dir):
         if r.returncode != 0:
             raise RuntimeError(f'MATLAB remeshing failed (exit status {r.returncode})')
 
-def unfitted_remeshed():
-    res = RESULTS; done = set()
-    if os.path.exists(os.path.join(res, 'accepted.xlsx')): done |= set(pd.read_excel(os.path.join(res, 'accepted.xlsx')).filename)
-    if os.path.exists(os.path.join(res, 'failed.txt')):
-        done |= {l.split('\t')[0] for l in open(os.path.join(res, 'failed.txt')).read().splitlines() if l.strip()}
-    return [os.path.basename(f) for f in glob.glob(os.path.join(a.out, '*.stl')) if os.path.basename(f) not in done]
-
-def run_fitting(n_new):
-    view = 'png' if a.no_show else VIEW
-    args = [sys.executable, os.path.join(HERE, 'check_orbit.py'), '--folder', a.out, '--results', RESULTS,
-            '--rule', FIT_RULE, '--target', str(FIT_TARGET), '--ball', str(FIT_BALL), '--view', view,
-            '--roi', str(FIT_ROI[0]), str(FIT_ROI[1]), '--rmin', str(FIT_RMIN), '--rmax', str(FIT_RMAX)]
-    if a.no_show or not SHOW_PNG or n_new > 3: args.append('--no-show')
-    if a.overwrite: args.append('--all')
-    r = subprocess.run(args)
-    if r.returncode != 0:
-        raise RuntimeError(f'fitting step failed (exit status {r.returncode}) - check check_orbit.py and fit_sphere_logged.py '
-                           '(with --roi / --rmin / --rmax)')
-
 def output_signature(path):
     if not os.path.isfile(path): return None
     stat = os.stat(path)
@@ -157,19 +123,14 @@ def process_once():
                 failed.append(f'{n}: existing output was not updated')
         if failed:
             raise RuntimeError('; '.join(failed) + f' - see {os.path.join(a.out, "remeshing_log.csv")}')
-    pending = ([os.path.basename(f) for f in glob.glob(os.path.join(a.out, '*.stl'))]
-               if a.overwrite else unfitted_remeshed())
-    if pending:
-        print(f'=== fitting {len(pending)} skull(s): {", ".join(pending)} ===')
-        run_fitting(len(pending))
-    return len(todo) + len(pending)
+    return len(todo)
 
 try:
     n = process_once()
     if a.once:
-        if n == 0: print('nothing new in dataset_CT')
+        if n == 0: print(f'nothing new to remesh in {a.raw}')
     else:
-        print(f'\nwatching {a.raw} - drop raw scans in, results appear here; stop with Ctrl-C')
+        print(f'\nwatching {a.raw} - remeshed STL files appear in {a.out}; stop with Ctrl-C')
         while True:
             time.sleep(3)
             process_once()

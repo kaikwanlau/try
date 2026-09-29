@@ -90,7 +90,7 @@ python quickstart.py
 <tbody>
 <tr>
 <td style="text-align: left;"><code>measurement_sphere_fitting_ALL.xlsx</code></td>
-<td style="text-align: left;">Successful numerical fits, measurements and diagnostics</td>
+<td style="text-align: left;">Measurements and diagnostic status; rodent orbital measurements are left blank</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>images/</code></td>
@@ -103,6 +103,7 @@ python quickstart.py
 </tbody>
 </table>
 <p>Check the console and failed-file log as well as the workbook. An absent specimen is not a zero measurement. Keep runs in separate copies or move the generated output folder before rerunning if you want to preserve prior results.</p>
+<p>The Peromyscus examples do not yield anatomical orbit fits, so their fitted radii, curvature and other orbital fields are omitted from measurement exports. Their rows remain for specimen identification, with an explanatory status. Remeshing settings are recorded by the remeshing step rather than added as measurement columns.</p>
 <h3 id="6-read-the-measurement-columns">6. Read the measurement columns</h3>
 <table>
 <thead>

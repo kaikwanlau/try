@@ -52,19 +52,11 @@
 </tr>
 <tr>
 <td style="text-align: left;"><code>1_remeshing/remesh_in_pycharm.py</code></td>
-<td style="text-align: left;">Watches the raw-input folder, calls MATLAB, then fits and displays a result; <code>--once</code> processes the current files and exits</td>
+<td style="text-align: left;">Watches the raw-input folder and calls MATLAB to write remeshed STLs and run logs; <code>--once</code> processes the current files and exits</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>1_remeshing/remesh_human_head_in_pycharm.py</code></td>
-<td style="text-align: left;">Similar workflow using human-cranium settings</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>1_remeshing/check_orbit.py</code></td>
-<td style="text-align: left;">Orbital fit inspection used by the wrappers</td>
-</tr>
-<tr>
-<td style="text-align: left;"><code>1_remeshing/fit_sphere_logged.py</code></td>
-<td style="text-align: left;">Logged orbital fitting used by the wrappers</td>
+<td style="text-align: left;">The same remeshing-only workflow, with a default remeshing parameter of 60</td>
 </tr>
 </tbody>
 </table>
@@ -114,9 +106,20 @@
 <td style="text-align: left;">A selected supplied skull</td>
 <td style="text-align: left;">Oriented bounding-box visualization</td>
 </tr>
+<tr>
+<td style="text-align: left;"><code>2_fitting/check_orbit.py</code></td>
+<td style="text-align: left;">A prepared STL folder supplied with <code>--folder</code></td>
+<td style="text-align: left;">Separate fitting and inspection workflow; use <code>--results</code> to choose the output folder and <code>--no-show</code> to save images without opening windows</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>2_fitting/fit_sphere_logged.py</code></td>
+<td style="text-align: left;">A prepared STL folder</td>
+<td style="text-align: left;">Logged orbital fitter used by <code>check_orbit.py</code>; saves fit diagnostics and inspection images</td>
+</tr>
 </tbody>
 </table>
 <p>Settings are edited near the top of each original script (inside the main block for some scripts). They are not command-line flags unless explicitly documented.</p>
+<p>Measurement exports omit remeshing-parameter columns. For the two Peromyscus examples, orbital fitting fields are blank and marked as not identifying an orbit. Diagnostic figures can still show the fitted sphere to illustrate this limitation. The figure script's internal <code>figure_cache</code> retains the diagnostic fits needed to redraw those figures; it is not a table of orbital measurements.</p>
 <h2 id="3-statistics">3. Statistics</h2>
 <table>
 <thead>

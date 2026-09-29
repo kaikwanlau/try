@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths
+from measurement_exports import export_measurements
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = str(paths.DATA)
@@ -243,7 +244,7 @@ save_page(current_folder)
 close_output()
 
 d = pd.DataFrame(rows)
-d.to_csv(os.path.join(HERE, CSV), index=False)
+export_measurements(d).to_csv(os.path.join(HERE, CSV), index=False)
 print("written", os.path.join(HERE, CSV), "(%d rows)" % len(d))
 
 from scipy.stats import spearmanr

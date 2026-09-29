@@ -13,7 +13,6 @@ them through `paths.py` in the repository root.
 | `Dataset.xlsx` | all measurements of the 100 finch specimens |
 | `Dataset_training.xlsx` | the 50 training specimens of Eq. (8) |
 | `Dataset_other_taxa.xlsx` | 53 per-specimen records for SI Section S4: 51 birds and 2 rodents |
-| `remeshing_parameters.csv` | remeshing settings for the specimens whose filename suffixes were removed |
 | `figure_inputs/` | inputs used only by `5_figures/figure.py` |
 
 The scripts only read from this folder; their results go into `output/` next to each script.
@@ -28,12 +27,12 @@ The **51 additional bird skulls** (42 Hawaiian honeycreepers and 9 cardueline re
 
 The **two rodent skulls and four human crania** are exploratory examples used to examine the method’s scope and limitations:
 
-- In the rodents, the fitted spheres lie outside the orbits. The paper therefore does not report orbital measurements for these specimens.
+- In the rodents, the fitted spheres lie outside the orbits. Orbital measurement fields are therefore blank in the released workbook and generated measurement files, with an explanatory status. Specimen identities, skull dimensions and mesh topology are retained.
 - In the human crania, the search band was changed to 10–50% of skull length and the radius range to 2–60 mm. The fitted spheres lie in the orbits, but none of the four fits meets both S4 quality criteria.
 
 These are groups of specimens; all the supplied surface meshes use the STL format. Their inclusion does not imply that the method gives reliable orbital measurements for every specimen or taxon.
 
-For the rodent examples in the figure script and numerical verifier, principal-axis alignment uses all vertices of the supplied mesh. The largest connected component is then retained for fitting. The rodent rows in `Dataset_other_taxa.xlsx` follow this order. `2_fitting/fit_sphere_batch.py` is a separate batch workflow with its own rodent settings; use `6_verification/verify_all.py` to reproduce the S4 values.
+For the rodent diagnostic figures, principal-axis alignment uses all vertices of the supplied mesh. The largest connected component is then retained for fitting. The spheres illustrate the method's limitation and are not exported as orbital measurements. Use `6_verification/verify_all.py` to reproduce the avian S4 measurements and the two-rodent inventory.
 
 ## Sources and scope
 
@@ -54,4 +53,4 @@ Preserve the original source attributions and check the terms attached to each s
 
 The statistics scripts read the released workbooks in this folder. The fitting scripts write new workbooks under their output folders; those do not automatically replace the released tables. Keep your own inputs in a separate folder and retain the measurement version used in an analysis.
 
-Specimen names retain their original spelling and capitalization. Remeshing settings are recorded in `remeshing_parameters.csv` rather than in the filenames. See the paper’s specimen lists for taxonomic details.
+Specimen names retain their original spelling and capitalization. Measurement tables omit remeshing-parameter columns. Remeshing input settings and run logs remain part of the remeshing workflow; the paper's SI specimen tables provide the finch preprocessing information. See the paper’s specimen lists for taxonomic details.

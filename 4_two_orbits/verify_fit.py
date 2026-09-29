@@ -140,6 +140,7 @@ if __name__ == '__main__':
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import paths
+    from measurement_exports import export_measurements
     args = sys.argv[1:]
     if args and args[-1].lower().endswith('.csv'):
         folders, out_csv = args[:-1], args[-1]
@@ -159,6 +160,6 @@ if __name__ == '__main__':
             print(r.get('filename'), r.get('status'), r.get('sphere_radius'), r.get('n_inliers'), r.get('fit_err_pct'), flush=True)
     table = pd.DataFrame(rows)
     table = table.drop(columns=[c for c in table.columns if c.startswith('_')])
-    table.to_csv(out_csv, index=False)
+    export_measurements(table).to_csv(out_csv, index=False)
     n_ok = int((table['status'] == 'ok').sum()) if 'status' in table else 0
     print(f'\n{len(table)} skulls ({n_ok} fitted); results written to {out_csv}')

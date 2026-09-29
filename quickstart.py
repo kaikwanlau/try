@@ -29,7 +29,7 @@ def load_fitter():
     return module.run
 
 
-def draw_inspection(mesh_path, fit, destination):
+def draw_inspection(mesh_path, fit, destination, diagnostic=False):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -48,7 +48,8 @@ def draw_inspection(mesh_path, fit, destination):
               center[1] + radius*np.sin(u)*np.sin(v),
               center[2] + radius*np.cos(v))
     fig = plt.figure(figsize=(14, 5), facecolor="#faf9f6")
-    fig.suptitle(f'{mesh_path.name}  |  orbital fit', fontsize=17, x=0.035, ha="left")
+    fit_label = "diagnostic sphere fit" if diagnostic else "orbital fit"
+    fig.suptitle(f'{mesh_path.name}  |  {fit_label}', fontsize=17, x=0.035, ha="left")
     views = [(0, -90, "Lateral: from −y"), (0, 90, "Lateral: from +y"),
              (90, -90, "Dorsal: from +z")]
     bounds = mesh.bounds
@@ -70,13 +71,15 @@ def draw_inspection(mesh_path, fit, destination):
         ax.view_init(elev=elev, azim=azim)
         ax.set_axis_off()
         ax.set_title(title, fontsize=11)
-    fig.text(0.035, 0.08,
-             f'Radius {radius:.4f} mm   ·   Curvature {fit["curvature"]:.4f} mm⁻¹'
-             f'   ·   {fit["n_inliers"]} inliers   ·   RMS/radius {fit["fit_err_pct"]:.2f}%',
-             fontsize=11)
-    fig.text(0.035, 0.025,
-             "Blue: fitted sphere. Red: retained points. Inspect anatomical placement before using the measurement.",
-             fontsize=9, color="#555555")
+    if diagnostic:
+        info = "Peromyscus control: the fitted sphere does not identify the orbit."
+        caption = "Blue: diagnostic fitted sphere. Red: retained points. No orbital measurements are reported."
+    else:
+        info = (f'Radius {radius:.4f} mm   ·   Curvature {fit["curvature"]:.4f} mm⁻¹'
+                f'   ·   {fit["n_inliers"]} inliers   ·   RMS/radius {fit["fit_err_pct"]:.2f}%')
+        caption = "Blue: fitted sphere. Red: retained points. Inspect anatomical placement before using the measurement."
+    fig.text(0.035, 0.08, info, fontsize=11)
+    fig.text(0.035, 0.025, caption, fontsize=9, color="#555555")
     fig.subplots_adjust(top=0.83, bottom=0.18, left=0.015, right=0.99, wspace=0.02)
     fig.savefig(destination, dpi=160, facecolor=fig.get_facecolor())
     plt.close(fig)
@@ -99,6 +102,8 @@ def main():
     if output.exists() and not output.is_dir():
         parser.error("--output must be a directory.")
     try:
+        import pandas as pd
+        from measurement_exports import export_measurements, is_rodent_filename
         run = load_fitter()
     except ModuleNotFoundError as exc:
         parser.exit(2, f"Missing package: {exc.name}. Run: python -m pip install -r requirements-quickstart.txt\n")
@@ -111,6 +116,9 @@ def main():
     result = {key: value for key, value in fit.items() if not key.startswith("_")}
     result["s4_screen_pass"] = (bool(fit["n_inliers"] >= 40 and fit["fit_err_pct"] <= 10)
                                 if fit["status"] == "ok" else None)
+    table = export_measurements(pd.DataFrame([result]))
+    result = table.astype(object).where(table.notna(), None).iloc[0].to_dict()
+    diagnostic = is_rodent_filename(mesh_path.name)
     output.mkdir(parents=True, exist_ok=True)
     with (output / "measurements.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(result))
@@ -126,22 +134,29 @@ def main():
                   mesh_units="mm (assumed, not inferred from STL)", settings=SETTINGS,
                   python=platform.python_version(), packages=versions,
                   implementation="4_two_orbits/verify_fit.py:run", result=result,
-                  interpretation="Numerical success and the S4 screen do not replace visual anatomical inspection.")
-    (output / "run.json").write_text(json.dumps(record, indent=2, default=float) + "\n", encoding="utf-8")
+                  interpretation=("Diagnostic sphere fit only; no orbital measurements are reported for Peromyscus."
+                                  if diagnostic else
+                                  "Numerical success and the S4 screen do not replace visual anatomical inspection."))
+    (output / "run.json").write_text(json.dumps(record, indent=2, default=float, allow_nan=False) + "\n", encoding="utf-8")
     picture = output / "inspection.png"
     if fit["status"] != "ok":
         picture.unlink(missing_ok=True)
         print(f'No numerical fit: {fit["status"]}. Diagnostics saved to {output}')
         return 1
     try:
-        draw_inspection(mesh_path, fit, picture)
+        draw_inspection(mesh_path, fit, picture, diagnostic=diagnostic)
     except Exception as exc:
         picture.unlink(missing_ok=True)
-        print(f"Measurements saved, but the inspection image could not be rendered: {exc}")
+        saved = "Diagnostics" if diagnostic else "Measurements"
+        print(f"{saved} saved, but the inspection image could not be rendered: {exc}")
         return 1
-    print(f'Radius: {fit["sphere_radius"]:.4f} mm; curvature: {fit["curvature"]:.4f} mm^-1')
-    print(f'Inliers: {fit["n_inliers"]}; RMS/radius: {fit["fit_err_pct"]:.2f}%')
-    print(f"Results: {output}\nOpen inspection.png and check that the sphere is in the orbit.")
+    if diagnostic:
+        print("Diagnostic sphere fit completed; no orbital measurements are reported.")
+        print(f"Results: {output}\nOpen inspection.png to inspect the diagnostic fit placement.")
+    else:
+        print(f'Radius: {fit["sphere_radius"]:.4f} mm; curvature: {fit["curvature"]:.4f} mm^-1')
+        print(f'Inliers: {fit["n_inliers"]}; RMS/radius: {fit["fit_err_pct"]:.2f}%')
+        print(f"Results: {output}\nOpen inspection.png and check that the sphere is in the orbit.")
     return 0
 
 

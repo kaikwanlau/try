@@ -94,7 +94,8 @@ def remesh(stl_dir):
             if apps: exe = apps[-1]
             else: sys.exit('MATLAB binary not found. Give --matlab /Applications/MATLAB_R2025a.app/bin/matlab (your version)')
         r = subprocess.run([exe, '-batch', cmd])
-        if r.returncode != 0: print('MATLAB remeshing failed')
+        if r.returncode != 0:
+            raise RuntimeError(f'MATLAB remeshing failed (exit status {r.returncode})')
 
 def unfitted_remeshed():
     res = os.path.join(HERE, 'results'); done = set()
@@ -104,12 +105,19 @@ def unfitted_remeshed():
     return [os.path.basename(f) for f in glob.glob(os.path.join(a.out, '*.stl')) if os.path.basename(f) not in done]
 
 def run_fitting(n_new):
+    view = 'png' if a.no_show else VIEW
     args = [sys.executable, os.path.join(HERE, 'check_orbit.py'), '--folder', a.out, '--results', os.path.join(HERE, 'results'),
-            '--rule', FIT_RULE, '--target', str(FIT_TARGET), '--ball', str(FIT_BALL), '--view', VIEW]
+            '--rule', FIT_RULE, '--target', str(FIT_TARGET), '--ball', str(FIT_BALL), '--view', view]
     if a.no_show or not SHOW_PNG or n_new > 3: args.append('--no-show')
+    if a.overwrite: args.append('--all')
     r = subprocess.run(args)
     if r.returncode != 0:
-        print('fitting step failed - make sure check_orbit.py and fit_sphere_logged.py in this folder are the current versions')
+        raise RuntimeError(f'fitting step failed (exit status {r.returncode}) - check check_orbit.py and fit_sphere_logged.py')
+
+def output_signature(path):
+    if not os.path.isfile(path): return None
+    stat = os.stat(path)
+    return stat.st_size, stat.st_mtime_ns
 
 def process_once():
     stl_dir = os.path.join(a.out, '_stl_input')
@@ -118,32 +126,43 @@ def process_once():
         rn = stl_name(f); target = os.path.join(a.out, f'{rn[:-4]}_p{current_para(rn)}.stl')
         if os.path.exists(target) and not a.overwrite: continue
         dst = os.path.join(stl_dir, rn)
-        if not os.path.exists(dst):
-            if f.lower().endswith('.stl'): shutil.copy(f, dst)
-            else:
-                import trimesh; trimesh.load_mesh(f, force='mesh').export(dst)
+        if f.lower().endswith('.stl'): shutil.copy(f, dst)
+        else:
+            import trimesh; trimesh.load_mesh(f, force='mesh').export(dst)
         todo.append(os.path.basename(target))
     if todo:
         print(f'\n=== remeshing {len(todo)} skull(s): {", ".join(todo)} ===')
+        previous = {n: output_signature(os.path.join(a.out, n)) for n in todo}
         remesh(stl_dir)
+        failed = []
         for n in todo:
-            if not os.path.exists(os.path.join(a.out, n)): print(f'{n}: not produced - see {os.path.join(a.out, "remeshing_log.csv")}')
-    pending = unfitted_remeshed()
+            signature = output_signature(os.path.join(a.out, n))
+            if signature is None or signature[0] == 0:
+                failed.append(f'{n}: not produced or empty')
+            elif a.overwrite and signature == previous[n]:
+                failed.append(f'{n}: existing output was not updated')
+        if failed:
+            raise RuntimeError('; '.join(failed) + f' - see {os.path.join(a.out, "remeshing_log.csv")}')
+    pending = ([os.path.basename(f) for f in glob.glob(os.path.join(a.out, '*.stl'))]
+               if a.overwrite else unfitted_remeshed())
     if pending:
         print(f'=== fitting {len(pending)} skull(s): {", ".join(pending)} ===')
         run_fitting(len(pending))
     return len(todo) + len(pending)
 
-n = process_once()
-if a.once:
-    if n == 0: print('nothing new in dataset_CT')
-    sys.exit(0)
-print(f'\nwatching {a.raw} - drop raw scans in, results appear here; stop with Ctrl-C')
 try:
-    while True:
-        time.sleep(3)
-        process_once()
+    n = process_once()
+    if a.once:
+        if n == 0: print('nothing new in dataset_CT')
+    else:
+        print(f'\nwatching {a.raw} - drop raw scans in, results appear here; stop with Ctrl-C')
+        while True:
+            time.sleep(3)
+            process_once()
 except KeyboardInterrupt:
     print('stopped')
+except RuntimeError as e:
+    print(f'ERROR: {e}', file=sys.stderr)
+    sys.exit(1)
 finally:
     if eng is not None: eng.quit()

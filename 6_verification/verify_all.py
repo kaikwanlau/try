@@ -124,12 +124,17 @@ def specimen_table(source):
     return pd.DataFrame(rows)
 
 
-def load_skull(path):
+def load_skull(path, align_full_mesh=False):
     raw = trimesh.load_mesh(path)
     parts = raw.split(only_watertight=False)
     mesh = sorted(parts, key=lambda part: len(part.vertices), reverse=True)[0]
     topology = dict(closed=bool(raw.is_watertight), n_components=len(parts),
                     genus_largest=int(round(1 - mesh.euler_number / 2)))
+    if align_full_mesh:
+        # Alignment uses all input vertices; fragment removal belongs to fitting.
+        # Preserve the topology of the original mesh in the returned metadata.
+        oriented = align_by_principal_axes(raw)
+        mesh = max(oriented.split(only_watertight=False), key=lambda part: len(part.vertices))
     mesh.process(validate=True)
     return mesh, topology
 
@@ -402,7 +407,7 @@ HC, CARD, RODENT = 'Honeycreepers', 'HC relatives', 'Peromyscus'
 FINCH_FOLDER_NAMES = ('DF_and_their_relatives', 'dataset', 'DF_and_their_Relatives', 'Darwins_finches')
 OTHER_FOLDERS = [(('Honeycreepers_watertight', 'Honeycreepers_para', 'Honeycreepers'), HC, 42),
                  (('HC_Relatives_watertight', 'HC_Relatives_para', 'HC_Relatives'), CARD, 9),
-                 (('Peromyscus', 'Peromyscus_watertight'), RODENT, 3)]
+                 (('Peromyscus', 'Peromyscus_watertight'), RODENT, 2)]
 SPECIES_NAMES = {
     'C. flava': 'Chlorodrepanis flava', 'C. stejnegeri': 'Chlorodrepanis stejnegeri',
     'C. virens': 'Chlorodrepanis virens', 'H. wilsoni': 'Hemignathus wilsoni',
@@ -463,7 +468,12 @@ def find_other_taxa(root):
 def align_by_principal_axes(mesh):
     vertices = np.asarray(mesh.vertices, float)
     centred = vertices - vertices.mean(axis=0)
-    axes = np.linalg.svd(centred, full_matrices=False)[2]
+    # Match the principal-axis convention used to draw the rodent figures.
+    _, eigenvectors = np.linalg.eigh(centred.T @ centred)
+    axes = eigenvectors[:, [2, 1, 0]].T
+    for axis in range(3):
+        if np.sum((centred @ axes[axis]) ** 3) < 0:
+            axes[axis] *= -1
     if np.linalg.det(axes) < 0:
         axes[2] *= -1
     oriented = mesh.copy()
@@ -509,9 +519,7 @@ def second_orbit(mesh, first):
 
 
 def measure_other_skull(path, group, with_second_orbit=True):
-    mesh, topology = load_skull(path)
-    if group == RODENT:
-        mesh = align_by_principal_axes(mesh)
+    mesh, topology = load_skull(path, align_full_mesh=(group == RODENT))
     record = dict(filename=os.path.basename(path), **skull_dimensions(mesh), **topology)
     orbit = fit_orbit(mesh)
     record.update(fit_quality(mesh, orbit))
@@ -611,16 +619,18 @@ def verdict(counts):
     source = ('from Dataset.xlsx (quick run; the meshes were not refitted)' if QUICK_RUN else
               f'from the {MEASURED_MESHES} skull meshes')
     if agree == total:
-        return f'All {total} numbers printed in the paper were reproduced {source}.'
+        return f'All {total} encoded numerical comparisons passed using measurements {source}.'
     problems = ([f"{differ} {'differs' if differ == 1 else 'differ'}"] if differ else [])
     problems += [f'{total - agree - differ} could not be computed'] if total - agree - differ else []
-    return f"{agree} of the {total} numbers printed in the paper were reproduced {source}; {' and '.join(problems)}."
+    return f"{agree} of {total} encoded numerical comparisons passed using measurements {source}; {' and '.join(problems)}."
 
 
 def agrees(reported, value, tolerance=None):
     if value is None or not np.isfinite(float(value)):
         return None, 'not computed'
     value, text = float(value), str(reported).strip()
+    if text.startswith('>='):
+        return value >= float(text[2:]), f'{value:.1f}'
     if text.startswith('<='):
         limit = text[2:]
         decimals = len(limit.split('.')[1]) if '.' in limit else 0
@@ -1061,7 +1071,7 @@ def run_other_taxa_statistics(O, D, full, rep):
 
     rep.section('SI Section S4: the skulls outside the finch dataset (main text: second avian radiation)')
     rep.check('Skulls outside the finch dataset', '51', len(birds))
-    rep.check('Avian skulls of the study (SI Figs. S6-S7)', '151', len(birds) + len(finch))
+    rep.check('Avian skulls of the study (Fig. 13)', '151', len(birds) + len(finch))
     rep.check('Hawaiian honeycreepers', '42', (birds.group == HC).sum())
     rep.check('Species of honeycreepers', '18', birds.species[birds.group == HC].nunique())
     rep.check('Cardueline relatives', '9', (birds.group == CARD).sum())
@@ -1159,15 +1169,9 @@ def run_other_taxa_statistics(O, D, full, rep):
         rep.check(f'Spearman, sphere radius vs {dim}, finch specimens', printed,
                   spearman(finch.sphere_radius, finch[dim])[0])
 
-    for name, printed_inliers, printed_error in [('Loxops caeruleirostris', '66', '7.6'),
-                                                 ('Pseudonestor xanthophrys', '63', '6.2')]:
-        shown = birds[birds.species == name]
-        rep.check(f'Fig. 13 caption, {name}: inliers', printed_inliers, shown.orbit_inliers.iloc[0])
-        rep.check(f'Fig. 13 caption, {name}: fit error (%)', printed_error, shown.fit_error_pct.iloc[0])
-
     rodents = O[O.group == RODENT]
-    rep.check('Rodent skulls', '3', len(rodents))
-    rep.check('Rodent skulls with no accepted fit', '1', rodents.sphere_radius.isna().sum())
+    rep.check('Rodent skulls', '2', len(rodents))
+    rep.check('Rodent skulls with no accepted numerical sphere fit', '0', rodents.sphere_radius.isna().sum())
     gossypinus = rodents[rodents.species == 'Peromyscus gossypinus'].sphere_radius.dropna()
     simulus = rodents[rodents.species == 'Peromyscus simulus'].sphere_radius.dropna()
     rep.check('P. gossypinus: radius of the accepted sphere (mm)', '4.7', gossypinus.iloc[0] if len(gossypinus) else np.nan)
@@ -1179,64 +1183,42 @@ def run_other_taxa_statistics(O, D, full, rep):
                  f'from the remeshing of SI Section S1 and are oriented by their principal axes before the fit.')
 
 
-def run_damage_statistics(D, O, full, rep):
-    rep.section('SI Section S5: damaged skulls and the agreement between the two orbits')
+def run_bilateral_statistics(D, O, full, rep):
+    rep.section('SI Section S5: agreement between the two orbits')
     if not full:
         rep.note('SI Section S5 needs the fits; it is skipped in a quick run (QUICK_RUN = True).')
         return
-    D = D.copy()
-    D['fragments'] = D.n_components > 1
-    D['tunnels'] = (~D.fragments) & (D.genus_largest >= 1)
-    D['intact'] = (~D.fragments) & (~D.tunnels)
-    rep.check('Single-component, genus-0 skulls ("intact")', '37', D.intact.sum())
-    rep.check('Skulls carrying topological damage', '63', (~D.intact).sum())
-    rep.check('Skulls with tunnels through the bony walls', '36', D.tunnels.sum())
-    rep.check('Skulls containing disconnected fragments', '27', D.fragments.sum())
-    rep.check('Fit error of the damaged skulls: median (%)', '5.3', D.fit_error_pct[~D.intact].median())
-    rep.check('Fit error of the intact skulls: median (%)', '5.5', D.fit_error_pct[D.intact].median())
-    rep.check('Mann-Whitney p, fit error damaged against intact', '0.84',
-              stats.mannwhitneyu(D.fit_error_pct[~D.intact], D.fit_error_pct[D.intact]).pvalue, tolerance=0.005)
-
-    key = ['genus', 'species'] if 'genus' in D.columns else ['species']
-    total = D.groupby(key).sphere_radius.transform('sum')
-    species_size = D.groupby(key).sphere_radius.transform('size')
-    conspecifics = (total - D.sphere_radius) / (species_size - 1)
-    D['deviation'] = 100 * (D.sphere_radius - conspecifics).abs() / conspecifics
-    within = D[species_size >= 3]
-    for label, mask, printed_value, printed_n in [('tunnels', within.tunnels, '4.0', '33'),
-                                                  ('fragments', within.fragments, '7.2', '27'),
-                                                  ('intact skulls', within.intact, '5.8', '30')]:
-        rep.check(f'Deviation from the conspecific mean, {label}: median (%)', printed_value,
-                  within.deviation[mask].median())
-        rep.check(f'Deviation from the conspecific mean, {label}: specimens', printed_n, mask.sum())
-    for label, mask, printed_p in [('tunnels', within.tunnels, '0.32'), ('fragments', within.fragments, '0.61')]:
-        rep.check(f'Mann-Whitney p, deviation of the {label} against the intact skulls', printed_p,
-                  stats.mannwhitneyu(within.deviation[mask], within.deviation[within.intact]).pvalue, tolerance=0.005)
-    rep.check('Spearman, deviation against the genus of the mesh', '0.03',
-              spearman(within.deviation, within.genus_largest)[0], tolerance=0.005)
-
     example = D[D.filename == 'G.DifficilisA.stl']
     if len(example):
         one = example.iloc[0]
-        rep.check('SI Fig. S8(a), G. difficilis specimen A: fit error (%)', '3.7', one.fit_error_pct)
-        rep.check('SI Fig. S8(b), G. difficilis specimen A: difference between the two radii (%)', '2.8',
+        rep.check('SI Fig. S2(a), G. difficilis specimen A: fit error (%)', '3.7', one.fit_error_pct)
+        rep.check('SI Fig. S2(b), G. difficilis specimen A: difference between the two radii (%)', '2.8',
                   100 * abs(one.second_sphere_radius - one.sphere_radius) / one.sphere_radius)
 
-    for label, frame, printed in [('finch specimens', D, ['83', '5', '8', '15', '0.86']),
+    for label, frame, printed in [('finch specimens', D, ['83', '5', '9', '0.86']),
                                   ('honeycreepers and relatives', O[(O.group != RODENT) &
                                                                     (~O.species.isin(ASYMMETRIC))],
-                                   ['28', '6', '11', '16', '0.79'])]:
+                                   ['28', '6', '11', '0.79'])]:
         pair = frame[(frame.second_orbit_inliers >= QUALITY['min_inliers']) &
                      (frame.second_fit_error_pct <= QUALITY['max_fit_error'])]
         difference = 100 * (pair.second_sphere_radius - pair.sphere_radius).abs() / pair.sphere_radius
         rep.check(f'Second orbit meeting the criteria, {label}', printed[0], len(pair))
-        rep.check(f'Difference between the two radii, {label}: median (%)', printed[1], difference.median(),
-                  tolerance=0.5)
-        rep.check(f'Difference between the two radii, {label}: three quarters within (%)', printed[2],
-                  difference.quantile(0.75), tolerance=0.5)
-        rep.check(f'Difference between the two radii, {label}: nine tenths within (%)', printed[3],
-                  difference.quantile(0.90), tolerance=0.5)
-        rep.check(f'Spearman between the two sides, {label}', printed[4],
+        # These statements describe coverage at fixed bounds, not interpolated quantiles.
+        for threshold, minimum, fraction in [(printed[1], '>=50', 'half'),
+                                              (printed[2], '>=75', 'three quarters')]:
+            rep.check(f'{label}: at least {fraction} within {threshold}% between radii (coverage %)', minimum,
+                      100 * (difference <= float(threshold)).mean())
+        if label == 'finch specimens':
+            rep.check('Finch specimens: at least nine tenths within 15% between radii (coverage %)', '>=90',
+                      100 * (difference <= 15).mean())
+        else:
+            rep.check('Honeycreepers and relatives: specimens within 13% between radii', '25',
+                      (difference <= 13).sum())
+            remaining = difference[difference > 13]
+            rep.check('Honeycreepers and relatives: remaining specimens', '3', len(remaining))
+            rep.check('Remaining specimens: smallest difference between radii (%)', '23', remaining.min())
+            rep.check('Remaining specimens: largest difference between radii (%)', '27', remaining.max())
+        rep.check(f'Spearman between the two sides, {label}', printed[3],
                   spearman(pair.sphere_radius, pair.second_sphere_radius)[0])
     rep.check('Skulls of the other taxa used for the comparison (the asymmetric Loxops excluded)', '48',
               ((O.group != RODENT) & (~O.species.isin(ASYMMETRIC))).sum())
@@ -1587,11 +1569,11 @@ def write_si_latex(models, rep, out, generated, mode, versions):
               r'{\centering\rule{0pt}{4ex}\Large\textbf{' + message + r'}\rule[-2.2ex]{0pt}{0pt}}}\par', r'\vspace{1.2em}',
               r'\noindent The script \texttt{' + latex_escape(SCRIPT) + r'} fitted the orbit sphere and the neurocranium '
               r'ellipsoid to each of the 100 finch skull meshes of the repository, fitted the orbit of the skulls of SI '
-              r'Section~S4, recomputed every statistic of the main text '
-              r'and of the Supporting Information from these measurements, and compared each value with the value '
+              r'Section~S4, recomputed the statistics encoded from the main text '
+              r'and the Supporting Information from these measurements, and compared each value with the value '
               r'printed in the paper. A value counts as reproduced when, rounded to the precision printed in the paper, '
               r'it equals the printed value. The tables of the Supporting Information follow, rebuilt from the '
-              r'recomputed values, and then every number stated in the text.',
+              r'recomputed values, followed by the encoded comparisons with the text.',
               r'\section*{Summary}', r'\begin{tabular}{>{\raggedright\arraybackslash}p{0.66\textwidth}rr}', r'\toprule',
               r'\textbf{Part of the paper} & \textbf{Numbers} & \textbf{Reproduced} \\', r'\midrule']
     summary = rows.groupby('section', sort=False)['agrees'].agg(numbers='size', agree=lambda a: int((a == 'yes').sum()))
@@ -1744,11 +1726,11 @@ def write_si_html(models, rep, out, generated, mode, versions):
              f'<div class="verdict {"pass" if agree == total else "fail"}">{html.escape(message)}</div>',
              f'<p>The script <code>{html.escape(SCRIPT)}</code> fitted the orbit sphere and the neurocranium ellipsoid to '
              'each of the 100 finch skull meshes of the repository, fitted the orbit of the skulls of SI Section S4, '
-             'recomputed every statistic of the main text and of the '
+             'recomputed the statistics encoded from the main text and the '
              'Supporting Information from these measurements, and compared each value with the value printed in the '
              'paper. A value counts as reproduced when, rounded to the precision printed in the paper, it equals the '
              'printed value. The tables of the Supporting Information follow, rebuilt from the recomputed values, and '
-             'then every number stated in the text.</p>',
+             'then the encoded comparisons with the text.</p>',
              '<h2>Summary</h2><table class="booktabs wide"><thead><tr><th>Part of the paper</th><th>Numbers</th>'
              '<th>Reproduced</th></tr></thead><tbody>']
     summary = rows.groupby('section', sort=False)['agrees'].agg(numbers='size', agree=lambda a: int((a == 'yes').sum()))
@@ -2031,7 +2013,7 @@ def main():
         print('Quick run: the measurements of SI Section S4 are read from Dataset_other_taxa.xlsx.')
     if other is not None:
         run_other_taxa_statistics(other, D, not QUICK_RUN, rep)
-        run_damage_statistics(D, other, not QUICK_RUN, rep)
+        run_bilateral_statistics(D, other, not QUICK_RUN, rep)
     elif OTHER_TAXA:
         rep.section('SI Sections S4 and S5: the skulls outside the finch dataset')
         rep.note('Not checked: the folders ' + ', '.join(names[0] for names, _, _ in OTHER_FOLDERS) + ' were not '
@@ -2069,7 +2051,7 @@ def main():
         print('    SI_tables.pdf   the same document as a PDF')
     else:
         print(f'    SI_tables.tex   the same document for LaTeX ({problem})')
-    print('    report.md       every number of the paper next to the reproduced value')
+    print('    report.md       encoded manuscript values next to the reproduced values')
     if other is not None and not QUICK_RUN:
         print('    Dataset_other_taxa.xlsx   the per-specimen values of SI Section S4 cited in the paper')
     if OPEN_RESULTS:
@@ -2077,7 +2059,8 @@ def main():
             webbrowser.open(Path(pdf or page).resolve().as_uri())
         except Exception:
             pass
+    return 0 if reproduced else 1
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

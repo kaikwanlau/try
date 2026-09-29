@@ -12,7 +12,7 @@ them through `paths.py` in the repository root.
 | `Human_cranium/` | 4 human crania |
 | `Dataset.xlsx` | all measurements of the 100 finch specimens |
 | `Dataset_training.xlsx` | the 50 training specimens of Eq. (8) |
-| `Dataset_other_taxa.xlsx` | the per-specimen values of SI Section S4 |
+| `Dataset_other_taxa.xlsx` | 53 per-specimen records for SI Section S4: 51 birds and 2 rodents |
 | `remeshing_parameters.csv` | remeshing settings for the specimens whose filename suffixes were removed |
 | `figure_inputs/` | inputs used only by `5_figures/figure.py` |
 
@@ -32,6 +32,8 @@ The **two rodent skulls and four human crania** are exploratory examples used to
 - In the human crania, the search band was changed to 10–50% of skull length and the radius range to 2–60 mm. The fitted spheres lie in the orbits, but none of the four fits meets both S4 quality criteria.
 
 These are groups of specimens; all the supplied surface meshes use the STL format. Their inclusion does not imply that the method gives reliable orbital measurements for every specimen or taxon.
+
+For the rodent examples in the figure script and numerical verifier, principal-axis alignment uses all vertices of the supplied mesh. The largest connected component is then retained for fitting. The rodent rows in `Dataset_other_taxa.xlsx` follow this order. `2_fitting/fit_sphere_batch.py` is a separate batch workflow with its own rodent settings; use `6_verification/verify_all.py` to reproduce the S4 values.
 
 ## Sources and scope
 

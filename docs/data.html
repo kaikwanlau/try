@@ -45,7 +45,7 @@ them through <code>paths.py</code> in the repository root.</p>
 </tr>
 <tr>
 <td><code>Dataset_other_taxa.xlsx</code></td>
-<td>the per-specimen values of SI Section S4</td>
+<td>53 per-specimen records for SI Section S4: 51 birds and 2 rodents</td>
 </tr>
 <tr>
 <td><code>remeshing_parameters.csv</code></td>
@@ -68,6 +68,7 @@ them through <code>paths.py</code> in the repository root.</p>
 <li>In the human crania, the search band was changed to 10–50% of skull length and the radius range to 2–60 mm. The fitted spheres lie in the orbits, but none of the four fits meets both S4 quality criteria.</li>
 </ul>
 <p>These are groups of specimens; all the supplied surface meshes use the STL format. Their inclusion does not imply that the method gives reliable orbital measurements for every specimen or taxon.</p>
+<p>For the rodent examples in the figure script and numerical verifier, principal-axis alignment uses all vertices of the supplied mesh. The largest connected component is then retained for fitting. The rodent rows in <code>Dataset_other_taxa.xlsx</code> follow this order. <code>2_fitting/fit_sphere_batch.py</code> is a separate batch workflow with its own rodent settings; use <code>6_verification/verify_all.py</code> to reproduce the S4 values.</p>
 <h2 id="sources-and-scope">Sources and scope</h2>
 <p>The bird scans were acquired and processed in the work of Tokita et al. (2017), Al-Mosleh et al. (2021) and Mosleh et al. (2023), and were remeshed for this study. The honeycreeper and cardueline collections come from the Tokita et al. dataset. See the accompanying paper for the specimen lists and preparation method.</p>
 <p>The two rodent examples are <em>Peromyscus gossypinus</em> and <em>P. simulus</em> from the openVertebrate project. The four human examples are drawn from TotalSegmentator (s1397), the Arothron example skull, BodyParts3D and a NiiVue sample head CT. Their preparation and fitting settings are described in the paper.</p>

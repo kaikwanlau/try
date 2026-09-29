@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, glob, os, re
+import argparse, glob, math, os, re
 import numpy as np, pandas as pd, trimesh
 from scipy.optimize import minimize
 
@@ -44,9 +44,9 @@ def split_name(name, folder=None):
     return name[:-4], parameter
 
 
-def accept(rule, r, L, rms, c, ext):
+def accept(rule, r, L, rms, c, ext, rmin=2.0, rmax=6.0):
     if rule == 'mm':
-        return 2.0 < r < 6.0
+        return rmin < r < rmax
     return (0.10 <= r / L <= 0.27) and (rms / r <= 0.25) and (abs(c[1]) <= ext[1] / 2)
 
 
@@ -120,12 +120,18 @@ def main():
     ap.add_argument('--target', type=int, default=400)
     ap.add_argument('--ball', type=float, default=2.0)
     ap.add_argument('--roi', type=float, nargs=2, default=[0.30, 0.70])
+    ap.add_argument('--rmin', type=float, default=2.0, help='lower radius bound in mm for the mm rule')
+    ap.add_argument('--rmax', type=float, default=6.0, help='upper radius bound in mm for the mm rule')
     ap.add_argument('--seeds', type=int, default=15)
     ap.add_argument('--files', nargs='*', default=None, help='only these filenames (default: all *.stl in folder)')
     ap.add_argument('--render', default=None, help='folder for one PNG per skull (3 views + 2 sections)')
     ap.add_argument('--interactive', action='store_true', help='open the pyvista window for each skull (as in fit_sphere.py)')
     ap.add_argument('--no-slices', action='store_true', help='interactive window without the section outlines')
     a = ap.parse_args()
+    if not (0 <= a.roi[0] < a.roi[1] <= 1):
+        ap.error('--roi must satisfy 0 <= start < end <= 1')
+    if not (math.isfinite(a.rmin) and math.isfinite(a.rmax) and 0 < a.rmin < a.rmax):
+        ap.error('--rmin and --rmax must be finite and satisfy 0 < rmin < rmax')
     if a.render: os.makedirs(a.render, exist_ok=True)
 
     accepted, attempts, failed = [], [], []
@@ -169,7 +175,7 @@ def main():
             if c is None:
                 row['status'] = 'fit-failed'; attempts.append(row); log.append(f'a{att+1}:fitfail'); continue
             rms = float(np.sqrt(np.mean((np.linalg.norm(inl - c, axis=1) - r) ** 2)))
-            passed = accept(a.rule, r, L, rms, c, ext)
+            passed = accept(a.rule, r, L, rms, c, ext, a.rmin, a.rmax)
             if first_fit is None: first_fit = (c, r, inl, int(s), att + 1, rms)
             row.update(status='accepted' if passed else 'rejected', n_candidates=len(idx), n_inliers=len(inl),
                        sphere_radius=r, r_over_L=r / L, rms_residual_mm=rms, rms_over_radius=rms / r,

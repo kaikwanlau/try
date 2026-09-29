@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, glob, os, platform, subprocess, sys
+import argparse, glob, math, os, platform, subprocess, sys
 import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -9,8 +9,15 @@ ap.add_argument('--results', default=os.path.join(HERE, 'results'))
 ap.add_argument('--all', action='store_true', help='re-fit every file, not only new ones')
 ap.add_argument('--no-show', action='store_true')
 ap.add_argument('--rule', default='relative'); ap.add_argument('--target', default='400'); ap.add_argument('--ball', default='2.0')
+ap.add_argument('--roi', type=float, nargs=2, default=[0.30, 0.70])
+ap.add_argument('--rmin', type=float, default=2.0, help='lower radius bound in mm for the mm rule')
+ap.add_argument('--rmax', type=float, default=6.0, help='upper radius bound in mm for the mm rule')
 ap.add_argument('--view', default='png', choices=['png', 'window', 'both'], help='png: save+open picture; window: interactive pyvista window')
 a = ap.parse_args()
+if not (0 <= a.roi[0] < a.roi[1] <= 1):
+    ap.error('--roi must satisfy 0 <= start < end <= 1')
+if not (math.isfinite(a.rmin) and math.isfinite(a.rmax) and 0 < a.rmin < a.rmax):
+    ap.error('--rmin and --rmax must be finite and satisfy 0 < rmin < rmax')
 
 fit_script = os.path.join(HERE, 'fit_sphere_logged.py')
 render_dir = os.path.join(a.results, 'renders'); os.makedirs(render_dir, exist_ok=True)
@@ -27,8 +34,10 @@ todo = [f for f in files if f not in done]
 if not todo: sys.exit('nothing new to fit (use --all to re-fit everything)')
 
 run = os.path.join(a.results, '_run')
-fit_cmd = [sys.executable, fit_script, a.folder, run, '--rule', a.rule, '--target', a.target, '--ball', a.ball, '--render', render_dir, '--files', *todo]
-if a.view in ('window', 'both'): fit_cmd.append('--interactive')
+fit_cmd = [sys.executable, fit_script, a.folder, run, '--rule', a.rule, '--target', a.target, '--ball', a.ball,
+           '--roi', str(a.roi[0]), str(a.roi[1]), '--rmin', str(a.rmin), '--rmax', str(a.rmax),
+           '--render', render_dir, '--files', *todo]
+if not a.no_show and a.view in ('window', 'both'): fit_cmd.append('--interactive')
 if a.view == 'window': a.no_show = True
 r = subprocess.run(fit_cmd)
 if r.returncode != 0: sys.exit('fitting failed')

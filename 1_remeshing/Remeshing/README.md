@@ -44,6 +44,10 @@ python 1_remeshing/remesh_in_pycharm.py --once --no-show
 
 The wrapper finds this MATLAB folder automatically. It accepts STL, PLY, OBJ and OFF inputs, converts them to STL when needed, remeshes them, and runs the orbital fitting step. It uses MATLAB Engine when available, otherwise `matlab -batch`. If MATLAB is not on your system path, pass `--matlab` with the full path to the MATLAB executable.
 
+`--no-show` saves inspection images without opening windows. `--overwrite` refreshes the staged raw inputs, remeshes them and refits the meshes in the output folder, including previously recorded fits. MATLAB errors, missing output meshes and fitting-process errors return a nonzero exit status. A successful process still needs a check of the output geometry and anatomical fit.
+
+The human remeshing wrapper exposes exploratory fitting settings near the top of its Python file. To reproduce the four released human fits with the paper's 10–50% search band and 2–60 mm radius range, use the human fitting script in `2_fitting/`.
+
 For specimen-specific parameters, create `1_remeshing/params.csv`:
 
 ```csv
@@ -63,6 +67,15 @@ remesh_batch('../dataset_CT', '../dataset_remeshed', '../params.csv', ...
 ```
 
 Direct MATLAB input must be STL. Without a parameter CSV, `remesh_batch('../dataset_CT', '../dataset_remeshed')` uses `para = 60`. MATLAB and Python therefore have different defaults; pass a parameter CSV when comparing runs.
+
+To try the original scan-derived surface included for Fig. 1, run this after setup from `1_remeshing/Remeshing/`:
+
+```matlab
+remesh_batch('../../data/figure_inputs/raw_meshes', ...
+             '../../output/raw_mesh_test', '', 'Seed', 0)
+```
+
+This uses `para = 60` and writes `P2.InornataA_p60.stl`, `remeshing_log.csv` and `remeshing_settings.txt` into `output/raw_mesh_test/` at the repository root. Check the new STL for boundary and non-manifold edges, connected components and surface distortion before interpreting its fits. A watertight surface alone does not establish anatomical accuracy. Use a new output folder for an independent rerun, since existing meshes are skipped unless `Overwrite` is enabled.
 
 | Option | Default | Purpose |
 | :--- | :--- | :--- |

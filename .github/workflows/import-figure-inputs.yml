@@ -65,7 +65,7 @@ jobs:
               return entry
 
           def photo():
-              url = 'https://upload.wikimedia.org/wikipedia/commons/f/f3/Camarhynchus_pallidus_12789263.jpg'
+              url = 'https://inaturalist-open-data.s3.amazonaws.com/photos/12789263/original.jpg'
               e = save('photo/C.pallidus.jpg', request(url), 'ad4d26a930222163d515ba26a3d94879a8b4a1b2', 'sha1')
               e.update(source_url='https://commons.wikimedia.org/wiki/File:Camarhynchus_pallidus_12789263.jpg',
                   download_url=url, author='Julien Renoult', date='2017-03-27',

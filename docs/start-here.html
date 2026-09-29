@@ -62,7 +62,7 @@ python quickstart.py
 <li><strong>Prepared mesh resolution comparable to the supplied specimens.</strong> The bird meshes were remeshed; the paper describes an average vertex spacing of about 0.8 mm. This is a study characteristic, not a universal prescription for every taxon or scale.</li>
 </ul>
 <p>Do not rescale each skull to unit size: the radius bounds and curvature-neighbourhood radius use physical units. The numerical routines retain the largest connected component; inspect fragmented inputs so that the retained component is the intended skull.</p>
-<p>Raw scans need preparation first. The wrappers in <code>1_remeshing/</code> require <strong>MATLAB and external remeshing code</strong>, which is not bundled. See <a href="remeshing.html">remeshing setup</a>. The already prepared example data let you start without this step.</p>
+<p>Raw scans need preparation first. The MATLAB remeshing code is included in <code>1_remeshing/Remeshing/</code>. Install <strong>MATLAB and the required toolboxes</strong>, then follow the <a href="remeshing.html">remeshing setup</a> before running the Python wrapper. The already prepared example data let you start without this step.</p>
 <h3 id="4-try-one-of-your-prepared-bird-skulls">4. Try one of your prepared bird skulls</h3>
 <p>From the project folder:</p>
 <pre><code class="language-bash">python quickstart.py --mesh &quot;data/My_skulls/specimen.stl&quot; --output &quot;output/specimen-check&quot;
@@ -239,8 +239,8 @@ ENABLE_VISUALIZATION = True
 <td style="text-align: left;">Check units, orientation, fragmentation, resolution and ROI placement before adjusting settings.</td>
 </tr>
 <tr>
-<td style="text-align: left;">MATLAB remeshing code not found</td>
-<td style="text-align: left;">The remeshing dependency is external. Use supplied prepared meshes first, then configure the remeshing folder.</td>
+<td style="text-align: left;">MATLAB remeshing code or dependencies not found</td>
+<td style="text-align: left;">Keep <code>1_remeshing/Remeshing/</code> with the repository and run <code>setup_remeshing</code> in MATLAB. See <a href="remeshing.html">remeshing setup</a>.</td>
 </tr>
 <tr>
 <td style="text-align: left;">Results differ from the paper</td>

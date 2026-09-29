@@ -16,6 +16,7 @@ The Python scripts estimate skull dimensions, orbital radius and neurocranial sh
 | :--- | :--- |
 | Understand the method | The animation above and the measurements described below |
 | Analyse your own skull meshes | [Biologist’s guide](docs/START_HERE.md): installation, an example and input requirements |
+| Prepare raw scans | [MATLAB remeshing setup](1_remeshing/Remeshing/README.md): dependencies and batch processing |
 | Reproduce the study | [Reproduction guide](docs/REPRODUCE.md): datasets, analyses, figures and numerical checks |
 
 After downloading the repository, open **`docs/index.html`** in a browser for the project website, including both videos and illustrated explanations of the measurements. The website also works offline.
@@ -65,7 +66,7 @@ Two rodent skulls and four human crania are included as exploratory examples. Th
 | Folder | Purpose |
 | :--- | :--- |
 | [`data/`](data/) | Prepared meshes and the three released measurement workbooks |
-| [`1_remeshing/`](1_remeshing/) | Raw-mesh preparation; requires external MATLAB remeshing code |
+| [`1_remeshing/`](1_remeshing/) | Raw-mesh preparation with the included MATLAB code; MATLAB and its required toolboxes must be installed |
 | [`2_fitting/`](2_fitting/) | Dimensions, orbital spheres and neurocranial ellipsoids |
 | [`3_statistics/`](3_statistics/) | Correlations and the curvature regression model |
 | [`4_two_orbits/`](4_two_orbits/) | Bilateral fits and diagnostic outputs |
@@ -97,6 +98,6 @@ Kaikwan Lau and Gary P. T. Choi. *[Robust Parametric Estimation of Avian Cranial
 }
 ```
 
-Code license: **[Apache License 2.0](LICENSE)**. See the original data sources for their attribution and reuse terms.
+Code license: **[Apache License 2.0](LICENSE)**. Bundled MATLAB dependencies retain their [third-party licenses and credits](1_remeshing/Remeshing/THIRD_PARTY.md). See the original data sources for their attribution and reuse terms.
 
 [Report an issue](https://github.com/kaikwanlau/skull-morphology/issues) · [Script reference](docs/REFERENCE.md) · [Update notes](UPDATE_NOTES.md)

@@ -61,8 +61,8 @@ def find_remeshing_dir(given):
     return None
 found = find_remeshing_dir(a.remeshing_dir)
 if found is None:
-    sys.exit('remesh_batch.m was not found. Put it inside your MATLAB Remeshing folder (the one containing code/ and '
-             'demo_voxelization_and_remeshing.m), e.g. /Users/<you>/Documents/MATLAB/Remeshing, and run again.')
+    sys.exit('remesh_batch.m was not found. Keep 1_remeshing/Remeshing/ with this repository, '
+             'or pass --remeshing-dir with the folder containing remesh_batch.m and code/.')
 a.remeshing_dir = found
 print(f'MATLAB remeshing folder: {a.remeshing_dir}')
 

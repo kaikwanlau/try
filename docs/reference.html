@@ -29,7 +29,7 @@
 </tbody>
 </table>
 <h2 id="1-remeshing">1. Remeshing</h2>
-<p>Requires MATLAB and a separate remeshing dependency. These wrappers are optional for the supplied prepared meshes.</p>
+<p>The MATLAB source is included in <code>1_remeshing/Remeshing/</code>. Install MATLAB and its required toolboxes, then follow the <a href="remeshing.html">remeshing setup</a>. These wrappers are optional for the supplied prepared meshes.</p>
 <table>
 <thead>
 <tr>
@@ -38,6 +38,18 @@
 </tr>
 </thead>
 <tbody>
+<tr>
+<td style="text-align: left;"><code>1_remeshing/Remeshing/setup_remeshing.m</code></td>
+<td style="text-align: left;">Checks MATLAB dependencies and installs MeshFix</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>1_remeshing/Remeshing/remesh_batch.m</code></td>
+<td style="text-align: left;">Voxelizes, repairs and smooths raw STL meshes; writes a log for each batch</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>1_remeshing/Remeshing/test_remeshing.m</code></td>
+<td style="text-align: left;">Checks the installation with a synthetic sphere</td>
+</tr>
 <tr>
 <td style="text-align: left;"><code>1_remeshing/remesh_in_pycharm.py</code></td>
 <td style="text-align: left;">Watches the raw-input folder, calls MATLAB, then fits and displays a result; <code>--once</code> processes the current files and exits</td>

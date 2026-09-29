@@ -11,10 +11,13 @@ All paths below are relative to the repository root. Keep the numbered folders a
 
 ## 1. Remeshing
 
-Requires MATLAB and a separate remeshing dependency. These wrappers are optional for the supplied prepared meshes.
+The MATLAB source is included in `1_remeshing/Remeshing/`. Install MATLAB and its required toolboxes, then follow the [remeshing setup](../1_remeshing/Remeshing/README.md). These wrappers are optional for the supplied prepared meshes.
 
 | Script | Purpose |
 | :--- | :--- |
+| `1_remeshing/Remeshing/setup_remeshing.m` | Checks MATLAB dependencies and installs MeshFix |
+| `1_remeshing/Remeshing/remesh_batch.m` | Voxelizes, repairs and smooths raw STL meshes; writes a log for each batch |
+| `1_remeshing/Remeshing/test_remeshing.m` | Checks the installation with a synthetic sphere |
 | `1_remeshing/remesh_in_pycharm.py` | Watches the raw-input folder, calls MATLAB, then fits and displays a result; `--once` processes the current files and exits |
 | `1_remeshing/remesh_human_head_in_pycharm.py` | Similar workflow using human-cranium settings |
 | `1_remeshing/check_orbit.py` | Orbital fit inspection used by the wrappers |

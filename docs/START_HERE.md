@@ -64,7 +64,7 @@ For the bird fitting scripts, use:
 
 Do not rescale each skull to unit size: the radius bounds and curvature-neighbourhood radius use physical units. The numerical routines retain the largest connected component; inspect fragmented inputs so that the retained component is the intended skull.
 
-Raw scans need preparation first. The wrappers in `1_remeshing/` require **MATLAB and external remeshing code**, which is not bundled. See [remeshing setup](../1_remeshing/Remeshing/README.md). The already prepared example data let you start without this step.
+Raw scans need preparation first. The MATLAB remeshing code is included in `1_remeshing/Remeshing/`. Install **MATLAB and the required toolboxes**, then follow the [remeshing setup](../1_remeshing/Remeshing/README.md) before running the Python wrapper. The already prepared example data let you start without this step.
 
 ### 4. Try one of your prepared bird skulls
 
@@ -173,7 +173,7 @@ Close each 3D window to continue to the next specimen. The batch workbook is wri
 | 3D window seems to pause processing | Close it to continue; this is expected for the interactive scripts. |
 | PyVista/OpenGL rendering fails | Run `quickstart.py` for a static image, or set `ENABLE_VISUALIZATION = False` in the batch script to export measurements and use a working viewer separately. |
 | No fit, too few inliers, implausible sphere | Check units, orientation, fragmentation, resolution and ROI placement before adjusting settings. |
-| MATLAB remeshing code not found | The remeshing dependency is external. Use supplied prepared meshes first, then configure the remeshing folder. |
+| MATLAB remeshing code or dependencies not found | Keep `1_remeshing/Remeshing/` with the repository and run `setup_remeshing` in MATLAB. See [remeshing setup](../1_remeshing/Remeshing/README.md). |
 | Results differ from the paper | Record versions and settings, check which workbook was used, and follow the reproduction guide. |
 
 [Next: reproduce the paper](REPRODUCE.md) · [All scripts](REFERENCE.md)

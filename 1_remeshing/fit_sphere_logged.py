@@ -1,28 +1,4 @@
 #!/usr/bin/env python3
-"""
-fit_sphere_logged.py -- headless batch sphere fitting with full per-attempt logging.
-
-Same algorithm and default settings as the released fit_sphere.py (ROI 30-70 % of length,
-2.0 mm curvature ball, 400 candidate vertices, component >= 20 points, 2 SD outlier cut,
-<= 3 refinements, up to 15 seeds).  Differences:
-  * no pyvista, so it runs unattended on a folder;
-  * every seed attempt is logged with dimensionless fit metrics;
-  * the acceptance criterion is selectable:
-        --rule mm        : released criterion, 2.0 mm < r < 6.0 mm
-        --rule relative  : 0.10 <= r/L <= 0.27, RMS/r <= 0.25, |c_y| <= width/2
-    (with --rule relative all 100 finch results are reproduced exactly).
-
-Usage:
-  python fit_sphere_logged.py <stl_folder> <out_prefix> [--rule mm|relative]
-                              [--target 400] [--ball 2.0] [--roi 0.30 0.70] [--seeds 15]
-Outputs:
-  <out_prefix>_accepted.xlsx   one row per accepted specimen (as before, plus quality columns)
-  <out_prefix>_attempts.csv    one row per seed attempt per specimen (accepted or not)
-  <out_prefix>_failed.txt      specimens with no accepted fit, with the reason per attempt
-
-Verified 2026-09-11: --rule mm reproduces Dataset.xlsx radii to < 2e-6 mm (trimesh 5.1.0, SciPy 1.13+);
---rule relative yields the identical accepted fit for all 100 finches.
-"""
 import argparse, glob, os, re
 import numpy as np, pandas as pd, trimesh
 from scipy.optimize import minimize
@@ -55,10 +31,17 @@ def fit_sphere_iteratively(points, max_iterations=3, outlier_std_dev=2.0):
     return fin.x[:3], fin.x[3], cur
 
 
-def split_name(name):
-    """'T. cantansA_p60.stl' -> ('T. cantansA', 60); 'T. cantansA.stl' -> ('T. cantansA', None)"""
+def split_name(name, folder=None):
     mm = re.match(r'^(.*)_p(\d+)\.stl$', name, flags=re.IGNORECASE)
-    return (mm.group(1), int(mm.group(2))) if mm else (name[:-4], None)
+    if mm:
+        return mm.group(1), int(mm.group(2))
+    parameter = None
+    if folder is not None:
+        parameters_file = os.path.join(os.path.dirname(os.path.abspath(folder)), 'remeshing_parameters.csv')
+        if os.path.isfile(parameters_file):
+            parameters = pd.read_csv(parameters_file).set_index('filename')['remeshing_parameter'].to_dict()
+            parameter = parameters.get(name)
+    return name[:-4], parameter
 
 
 def accept(rule, r, L, rms, c, ext):
@@ -68,7 +51,6 @@ def accept(rule, r, L, rms, c, ext):
 
 
 def render(m, c, r, inl, seed_vertex, name, title, out_png):
-    """3 views (left lateral, dorsal, right lateral) + 2 sections through the sphere centre (coronal, horizontal)."""
     import matplotlib; matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -87,7 +69,6 @@ def render(m, c, r, inl, seed_vertex, name, title, out_png):
         lo, hi = V.min(0), V.max(0)
         ax.set_xlim(lo[0], hi[0]); ax.set_ylim(lo[1], hi[1]); ax.set_zlim(lo[2], hi[2]); ax.set_box_aspect(hi - lo, zoom=1.25)
         ax.view_init(elev=el, azim=az); ax.set_axis_off(); ax.set_title(lab, fontsize=9)
-    # sections through the sphere centre: the mesh outline vs the sphere circle
     secs = [('coronal section (plane x = centre)', [1, 0, 0], (1, 2)), ('horizontal section (plane z = centre)', [0, 0, 1], (0, 1))]
     for j, (lab, normal, (ia, ib)) in enumerate(secs):
         ax = fig.add_subplot(gs[1, j])
@@ -111,7 +92,6 @@ def render(m, c, r, inl, seed_vertex, name, title, out_png):
 
 
 def show_interactive(m, c, r, inl, seed_vertex, name, title, slices=True):
-    """Interactive pyvista window, same style as the released fit_sphere.py; closes when you close the window."""
     import pyvista as pv
     faces = np.hstack([np.full((len(m.faces), 1), 3), m.faces]).astype(np.int64).ravel()
     pm = pv.PolyData(np.asarray(m.vertices, float), faces)
@@ -122,7 +102,7 @@ def show_interactive(m, c, r, inl, seed_vertex, name, title, slices=True):
         plotter.add_mesh(pv.Sphere(radius=r, center=c), style='wireframe', color='blue', line_width=2)
         if inl is not None:
             plotter.add_points(np.asarray(inl, float), color='crimson', point_size=6, render_points_as_spheres=True, label='Selected Points (Inliers)')
-        if slices:                       # mesh outline through the sphere centre, to see the sphere against the orbit wall
+        if slices:
             for normal in ('x', 'z'):
                 try:
                     sl = pm.slice(normal=normal, origin=c)
@@ -153,7 +133,7 @@ def main():
     if a.files: paths = [p for p in paths if os.path.basename(p) in set(a.files)]
     for fp in paths:
         name = os.path.basename(fp)
-        specimen, para = split_name(name)
+        specimen, para = split_name(name, a.folder)
         first_fit = None
         m = trimesh.load_mesh(fp)
         comps = m.split(only_watertight=False)

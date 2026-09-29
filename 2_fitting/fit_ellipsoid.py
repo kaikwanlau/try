@@ -1,13 +1,3 @@
-# ===================================================================================
-#
-# This script performs the ellipsoid fitting for skull meshes in batch.
-# Actions:
-# 1. Load the specified stl folders.
-# 2. Perform the ellispoid fitting for the braincase (a CONVEX feature).
-# 3. Display the mesh and the best-fit ellipsoid.
-# 4. Generate an excel file containing the skull dimensions, ellipsoidal semi-axis lengths, and ellipsoid centers for all meshes.
-#
-# ===================================================================================
 
 import trimesh
 import numpy as np
@@ -18,7 +8,6 @@ import os
 import glob
 import pandas as pd
 
-# --- project paths: the meshes are read from data/ (see paths.py in the project folder) ---
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -26,11 +15,6 @@ import paths
 
 
 def axis_aligned_ellipsoid_loss_function(params, points):
-    """
-    Loss function for an axis-aligned ellipsoid.
-    Calculates the sum of squared algebraic distances from each point to the surface.
-    Parameters are: center (3) and semi-axis lengths (3).
-    """
     center = params[:3]
     axes_lengths = params[3:6]
 
@@ -43,9 +27,6 @@ def axis_aligned_ellipsoid_loss_function(params, points):
 
 
 def fit_axis_aligned_ellipsoid_iteratively(points, max_iterations=3, outlier_std_dev=1.5):
-    """
-    Iteratively fits an axis-aligned ellipsoid and removes outlier points.
-    """
     current_points = points.copy()
     last_successful_result = None
 
@@ -109,22 +90,18 @@ def fit_axis_aligned_ellipsoid_iteratively(points, max_iterations=3, outlier_std
 
 
 if __name__ == '__main__':
-    # --- 1. USER-DEFINED PARAMETERS ---
-    DIRECTORY_PATH = str(paths.FINCHES)   # data/DF_and_their_relatives (see paths.py)
+    DIRECTORY_PATH = str(paths.FINCHES)
     ENABLE_VISUALIZATION = True
     SAVE_INDIVIDUAL_EXCEL = False
 
-    # --- 2. ALGORITHM THRESHOLDS & SETTINGS ---
     POSTERIOR_AXIS = 'x'
 
     POSTERIOR_PERCENTILE = 0.40
-    # --- END MODIFIED ---
 
     CURVATURE_RADIUS = 3
     TARGET_POINT_COUNT = 1200
     MAX_SEED_TO_CENTER_DISTANCE = 80.0
 
-    # --- 3. SCRIPT SETUP ---
     results_list = []
     search_path = os.path.join(DIRECTORY_PATH, '*.stl')
     stl_files = glob.glob(search_path)
@@ -132,7 +109,6 @@ if __name__ == '__main__':
         exit(f"Error: No .stl files found in {DIRECTORY_PATH}")
     print(f"Found {len(stl_files)} STL files to process.\n")
 
-    # --- 4. MAIN PROCESSING LOOP ---
     for i, file_path in enumerate(stl_files):
         print(f"--- Processing file {i + 1}/{len(stl_files)}: {os.path.basename(file_path)} ---")
         try:
@@ -150,7 +126,6 @@ if __name__ == '__main__':
         if axis_idx is None: exit(f"Error: POSTERIOR_AXIS must be 'x', 'y', or 'z'.")
         min_bound, max_bound = processed_mesh.bounds[:, axis_idx]
 
-        # This calculation now uses 0.30 (30%)
         cutoff_coord = max_bound - (max_bound - min_bound) * POSTERIOR_PERCENTILE
         posterior_mask = processed_mesh.vertices[:, axis_idx] > cutoff_coord
 
@@ -192,7 +167,6 @@ if __name__ == '__main__':
         picked_points = processed_mesh.vertices[final_indices]
         print(f"  -> Selected {len(picked_points)} final connected points for fitting.")
 
-        # --- 8. FIT AXIS-ALIGNED ELLIPSOID ---
         fit_params, final_points = fit_axis_aligned_ellipsoid_iteratively(picked_points)
         if fit_params is None:
             print("  -> Robust axis-aligned ellipsoid fit failed, skipping file.")
@@ -202,7 +176,6 @@ if __name__ == '__main__':
         fit_axes_lengths = fit_params[3:6]
         fit_angles_deg = [0.0, 0.0, 0.0]
 
-        # --- 9. SANITY CHECK ---
         distance = np.linalg.norm(seed_point_coords - fit_center)
         if distance > MAX_SEED_TO_CENTER_DISTANCE:
             print(f"  -> !!! WARNING: Fit failed sanity check. Discarding.")
@@ -210,7 +183,6 @@ if __name__ == '__main__':
 
         print(f"  -> Fit passed sanity check. Ellipsoid axes: {[f'{x:.2f}' for x in fit_axes_lengths]}")
 
-        # --- 10. RECORD SUCCESSFUL RESULTS ---
         result_data = {
             'filename': os.path.basename(file_path),
             'length_x': box_extents[0],
@@ -225,7 +197,6 @@ if __name__ == '__main__':
         }
         results_list.append(result_data)
 
-        # --- 11. SAVE INDIVIDUAL EXCEL FILE ---
         if SAVE_INDIVIDUAL_EXCEL:
             base_name = os.path.splitext(os.path.basename(file_path))[0]
             output_filename = os.path.join(paths.output_dir(__file__), f"{base_name}_ellipsoid_results.xlsx")
@@ -236,19 +207,14 @@ if __name__ == '__main__':
             except Exception as e:
                 print(f"  -> An error occurred while saving the individual Excel file: {e}")
 
-        # --- 12. VISUALIZATION ---
         if ENABLE_VISUALIZATION:
             plotter = pv.Plotter()
 
-            # --- Add filename and progress count ---
             filename = os.path.basename(file_path)
             progress_text = f"File {i + 1} / {len(stl_files)}"
 
-            # Add filename to the top-left (using 'black' for white backgrounds)
             plotter.add_text(filename, position='upper_left', font_size=12, color='black')
-            # Add progress to the top-right
             plotter.add_text(progress_text, position='upper_right', font_size=12, color='black')
-            # --- END ---
 
             plotter.add_mesh(processed_mesh, style='surface', opacity=0.3, color='lightgrey')
 
@@ -276,12 +242,10 @@ if __name__ == '__main__':
 
             plotter.add_legend()
 
-            # --- Add print statement to console ---
             print(f"  -> Displaying plot for: {filename} ({progress_text}). Close the plot window to continue...")
 
             plotter.show()
 
-    # --- 13. SAVE CONSOLIDATED RESULTS TO EXCEL ---
     if results_list:
         print("\n--- Saving all collected data to a single Excel file ---")
         df = pd.DataFrame(results_list)

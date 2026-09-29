@@ -1,70 +1,17 @@
-"""
-Robust parametric estimation of avian cranial morphology (K. Lau and G. P. T. Choi)
-All measurements and all numerical results of the paper, in one file.
 
-HOW TO USE
-    1. Nothing to copy: Dataset.xlsx and the folders of meshes are read from the data/ folder of the project
-       (see paths.py): DF_and_their_relatives/ (the 100 skulls of Darwin's finches and their relatives
-       together) and, for SI Sections S4-S5, Honeycreepers_watertight/, HC_Relatives_watertight/ and
-       Peromyscus/. The run prints which ones it found. Without the last three, those checks are skipped.
-    2. Run it: in PyCharm, open this file and click Run; in a terminal:  python verify_all.py
-       Missing Python packages are installed automatically on the first run (internet needed).
-    3. The last line of the console says whether every number of the paper was reproduced; anything that differs
-       is printed above it. Every table and number is also written to output/verify_all/SI_tables.html (opens in any
-       web browser) and, if LaTeX is installed, output/verify_all/SI_tables.pdf.
-    The full run takes about ten minutes: roughly 3.3 s per finch skull for the orbit and the neurocranium,
-    plus one further orbit fit per skull for the two-orbit comparison of SI Section S5.
-
-OPTIONS FOR CHECKING (just below)
-    PRINT_TABLES = True          print every SI table and every number of the text in the console
-    SHOW_FITS = ['T.BicolorE.stl']   look at the fits of particular specimens (or True for all of them)
-    OTHER_TAXA = False           skip SI Sections S4-S5 and check the finch dataset only
-    USE_TESTED_VERSIONS = True   install the package versions this file was tested with (Python 3.12)
-
-WHAT IT DOES
-    1. Fits the orbit sphere and the neurocranium ellipsoid to each of the 100 skull meshes in data/DF_and_their_relatives/ and
-       measures the skull dimensions (the work of fit_sphere.py and fit_ellipsoid.py, with the same settings).
-    2. Fits the orbit of the 51 skulls of SI Section S4 (42 Hawaiian honeycreepers, 9 cardueline relatives) and
-       of the 3 rodent skulls, with the same settings and no per-specimen input, and fits the second orbit of
-       every skull for SI Section S5 (the work of two_orbit.py and topology_check.py).
-    3. Recomputes every number and table of the main text and the Supporting Information.
-    4. Writes the folder output/verify_all/ next to this file:
-           report.md          each number printed in the paper next to the reproduced value
-           SI_tables.html     the verdict, the SI tables in the layout of the Supporting Information, and the
-                              numbers of the text; opens in any web browser
-           SI_tables.pdf      the same document as a PDF, if LaTeX is installed (SI_tables.tex is always written)
-           measurements.xlsx  the measurements of every finch specimen (the columns of Dataset.xlsx, and the
-                              inlier count, fit error and sphere position used in SI Sections S4-S5)
-           measurements.csv   the same, with the mesh topology, the width analyses of SI Section S2 and the
-                              second orbit of each skull
-           Dataset_other_taxa.xlsx   the per-specimen values of SI Section S4, the file cited in the paper
-           values.csv         the comparison, one row per number
-           tables/            the reproduced tables
-    The run starts from the remeshed, aligned meshes; the remeshing and the orientation step are not rerun. The
-    rodent skulls do not come from that pipeline and are oriented by their principal axes before the fit.
-    The printed values of the paper are written into this file; update them if the text changes.
-"""
-
-# --- project paths: the meshes are read from data/ (see paths.py in the project folder) ---
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths
 
-# ==============================================================================================================
-# OPTIONS (the defaults run everything)
-# ==============================================================================================================
-QUICK_RUN = False            # True: skip the mesh fitting and use the measurements stored in Dataset.xlsx
-PRINT_TABLES = False         # True: print every SI table and every number of the text in the console
-                             #       (False: the console shows only what differs from the paper, if anything)
-OTHER_TAXA = True            # True: also check SI Sections S4-S5 on the 51 honeycreeper and cardueline skulls and
-                             #       the 3 rodent skulls, if their folders are in the repository folder
-SHOW_FITS = False            # True: a window for every fit; or a list of files, e.g. ['G.ConirostrisC.stl']
-USE_TESTED_VERSIONS = False  # True: install the exact package versions this file was tested with
-OPEN_RESULTS = False         # True: also open SI_tables.html (or SI_tables.pdf) when the run ends
-REPOSITORY_FOLDER = str(paths.DATA)   # the data/ folder of the project (see paths.py)
+QUICK_RUN = False
+PRINT_TABLES = False
+OTHER_TAXA = True
+SHOW_FITS = False
+USE_TESTED_VERSIONS = False
+OPEN_RESULTS = False
+REPOSITORY_FOLDER = str(paths.DATA)
 
-# ==============================================================================================================
 import html
 import importlib
 import importlib.metadata
@@ -81,15 +28,10 @@ import webbrowser
 from datetime import datetime
 from pathlib import Path
 
-# Package versions this file was tested with (Python 3.12); all 490 numbers were reproduced with them.
 TESTED_VERSIONS = {'numpy': '2.2.6', 'scipy': '1.13.1', 'pandas': '2.3.3', 'openpyxl': '3.1.5',
                    'statsmodels': '0.14.5', 'trimesh': '4.8.3', 'rtree': '1.4.1', 'networkx': '3.6'}
-# The environment named in SI Section S1 (Python 3.12, trimesh 4.8.3, NumPy 2.2.6, SciPy 1.13.1), so that
-# USE_TESTED_VERSIONS = True reproduces the environment the measurements were made in. The SI also states that
-# the values hold under other releases (e.g. trimesh 5.1.0 with SciPy 1.17.1), which this script confirms:
-# the comparison with Dataset.xlsx in SI Section S1 passes under both.
 SCRIPT = os.path.basename(os.path.abspath(__file__))
-MEASURED_MESHES = 100   # set by main(): 100 finch skulls, plus the skulls of SI Section S4 when they are found
+MEASURED_MESHES = 100
 
 
 def installed_version(name):
@@ -100,7 +42,6 @@ def installed_version(name):
 
 
 def install_packages():
-    """Install the missing packages; with USE_TESTED_VERSIONS, install the tested version of every package."""
     wanted = dict(TESTED_VERSIONS, **({'pyvista': None} if SHOW_FITS else {}))
     if USE_TESTED_VERSIONS:
         todo = [f'{name}=={version}' for name, version in wanted.items() if version and installed_version(name) != version]
@@ -120,7 +61,7 @@ def install_packages():
 
 install_packages()
 
-import numpy as np  # noqa: E402  (imported after the automatic installation)
+import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import scipy  # noqa: E402
 import statsmodels  # noqa: E402
@@ -132,22 +73,14 @@ from scipy.optimize import minimize  # noqa: E402
 
 
 
-# ==============================================================================================================
-# CONSTANTS
-# ==============================================================================================================
 DIMS = ['length_x', 'width_y', 'height_z']
-MODEL_COEFFICIENTS = np.array([0.5653, -0.0013, -0.0004, -0.0153])   # Eq. (8) as printed in the main text
+MODEL_COEFFICIENTS = np.array([0.5653, -0.0013, -0.0004, -0.0153])
 DF, REL = "Darwin's finches", 'Relatives'
 GENERA = ['Camarhynchus', 'Certhidea', 'Geospiza', 'Pinaroloxias', 'Platyspiza',
           'Coereba', 'Euneornis', 'Loxigilla', 'Loxipasser', 'Melopyrrha', 'Tiaris']
 WIDE_SPECIES = ['magnirostris', 'violacea', 'portoricensis']
 
 
-# ==============================================================================================================
-# THE SPECIMENS (SI Tables S1-S2)
-# File-name prefix, group, genus, species, and the remeshing parameter of each specimen in the order of the
-# specimen IDs 1-100. The files of a species are matched to its IDs in alphabetical order.
-# ==============================================================================================================
 SPECIES = [
     ('C.Pallidus', DF, 'Camarhynchus', 'pallidus', [40, 60, 60, 60]),
     ('C.Parvulus', DF, 'Camarhynchus', 'parvulus', [60, 50, 58, 58, 58]),
@@ -177,7 +110,6 @@ SPECIES = [
 
 
 def specimen_table(source):
-    """The 100 finch specimens, from the folder of meshes or, in a quick run, from the file names of Dataset.xlsx."""
     where = f'in {source}' if isinstance(source, str) else 'in Dataset.xlsx'
     files = sorted(name for name in (os.listdir(source) if isinstance(source, str) else map(str, source))
                    if name.endswith('.stl'))
@@ -192,15 +124,7 @@ def specimen_table(source):
     return pd.DataFrame(rows)
 
 
-# ==============================================================================================================
-# SKULL MESH
-# ==============================================================================================================
 def load_skull(path):
-    """Load an .stl skull and keep its largest connected component, as all scripts of the repository do.
-
-    Returns the processed mesh and the topology of the file: whether it is a closed surface, its number of
-    connected components, and the genus of its largest component.
-    """
     raw = trimesh.load_mesh(path)
     parts = raw.split(only_watertight=False)
     mesh = sorted(parts, key=lambda part: len(part.vertices), reverse=True)[0]
@@ -211,35 +135,27 @@ def load_skull(path):
 
 
 def skull_dimensions(mesh):
-    """Length x, width y and height z: extents of the axis-aligned bounding box (AABB) of the aligned skull."""
     length, width, height = mesh.bounding_box.extents
     return dict(length_x=float(length), width_y=float(width), height_z=float(height))
 
 
-# ==============================================================================================================
-# ORBIT: sphere fit (from fit_sphere.py; the settings are those of the paper)
-# ==============================================================================================================
 ORBIT_SETTINGS = dict(
-    curvature_radius=2.0,   # CURVATURE_RADIUS (mm): neighbourhood of the discrete mean curvature
-    candidate_count=400,    # TARGET_POINT_COUNT: most concave vertices of the mesh that are candidates
-    band_start=0.30,        # ROI_START_PERCENT: the orbit is sought from 30% ...
-    band_end=0.70,          # ROI_END_PERCENT: ... to 70% of the skull length
-    max_seeds=15,           # MAX_SEED_ATTEMPTS: seeds tried, starting from the most concave vertex of the band
-    min_patch=20,           # patches with fewer vertices are skipped
-    min_radius=2.0,         # MIN_ORBIT_RADIUS (mm): a fit is accepted only if its radius lies in this range
-    max_radius=6.0,         # MAX_ORBIT_RADIUS (mm)
-    outlier_std=2.0,        # ROBUST_FIT_OUTLIAR_STD: outliers lie more than this many SD above the mean error
-    max_iterations=3,       # refinement steps of fit_sphere_iteratively
-    min_points=4,           # fewest points for a sphere fit
-    tolerance=1e-5,         # gtol of the L-BFGS-B optimizer (the SciPy default, set explicitly)
+    curvature_radius=2.0,
+    candidate_count=400,
+    band_start=0.30,
+    band_end=0.70,
+    max_seeds=15,
+    min_patch=20,
+    min_radius=2.0,
+    max_radius=6.0,
+    outlier_std=2.0,
+    max_iterations=3,
+    min_points=4,
+    tolerance=1e-5,
 )
 
 
 def sphere_loss_function(params, points):
-    """
-    Loss function for sphere fitting. It calculates the sum of squared distances
-    from each point to the sphere's surface.
-    """
     center = params[:3]
     radius = params[3]
     if radius <= 0:
@@ -249,10 +165,6 @@ def sphere_loss_function(params, points):
 
 
 def fit_sphere_iteratively(points, max_iterations=3, outlier_std_dev=2.0, min_points=4, gtol=1e-5):
-    """
-    Iteratively fits a sphere and removes outlier points for better accuracy.
-    This makes the final fit less sensitive to a few incorrectly selected points.
-    """
     current_points = points.copy()
     for i in range(max_iterations):
         if len(current_points) < min_points:
@@ -290,17 +202,6 @@ def fit_sphere_iteratively(points, max_iterations=3, outlier_std_dev=2.0, min_po
 
 
 def fit_orbit(mesh, side=None, **settings):
-    """Fit the orbit sphere of a skull mesh (the largest component, aligned so that x is the length).
-
-    Candidates are the vertices of the band that are among the most concave vertices of the mesh. The patch
-    is the connected component of candidates containing the seed, the most concave vertex of the band. A fit
-    is accepted if its radius lies between min_radius and max_radius; otherwise the next seed is tried.
-    Any setting of ORBIT_SETTINGS can be overridden by keyword. Returns None if no fit is accepted, else a dict
-    with sphere_radius, center, inliers, patch_size, seed_point, seed_rank and rejected_radii.
-
-    With side='right' or 'left' the band is restricted to that half of the skull, which fits the two orbits of
-    a skull independently (SI Section S5). Everything else is unchanged, and side=None is the fit of the paper.
-    """
     s = {**ORBIT_SETTINGS, **settings}
     v = mesh.vertices
     x_min, x_range = mesh.bounds[0, 0], mesh.bounding_box.extents[0]
@@ -344,29 +245,21 @@ def fit_orbit(mesh, side=None, **settings):
     return None
 
 
-# ==============================================================================================================
-# NEUROCRANIUM: ellipsoid fit (from fit_ellipsoid.py; the settings are those of the paper)
-# ==============================================================================================================
 BRAINCASE_SETTINGS = dict(
-    axis='x',                  # POSTERIOR_AXIS: the length axis; the braincase is at its maximum
-    rear_fraction=0.40,        # POSTERIOR_PERCENTILE: the rear 40% of the skull length is searched
-    curvature_radius=3.0,      # CURVATURE_RADIUS (mm)
-    candidate_count=1200,      # TARGET_POINT_COUNT: most convex vertices of the region that are candidates
-    min_patch=30,              # patches with fewer vertices are skipped
-    max_seed_to_centre=80.0,   # MAX_SEED_TO_CENTER_DISTANCE (mm): sanity check of the fit
-    outlier_std=1.5,           # outliers lie more than this many SD above the mean error
-    max_iterations=3,          # refinement steps of fit_axis_aligned_ellipsoid_iteratively
-    min_points=6,              # fewest points for an ellipsoid fit: its six parameters (never reached, see the report)
-    tolerance=1e-5,            # gtol of the L-BFGS-B optimizer (the SciPy default, set explicitly)
+    axis='x',
+    rear_fraction=0.40,
+    curvature_radius=3.0,
+    candidate_count=1200,
+    min_patch=30,
+    max_seed_to_centre=80.0,
+    outlier_std=1.5,
+    max_iterations=3,
+    min_points=6,
+    tolerance=1e-5,
 )
 
 
 def axis_aligned_ellipsoid_loss_function(params, points):
-    """
-    Loss function for an axis-aligned ellipsoid.
-    Calculates the sum of squared algebraic distances from each point to the surface.
-    Parameters are: center (3) and semi-axis lengths (3).
-    """
     center = params[:3]
     axes_lengths = params[3:6]
 
@@ -379,9 +272,6 @@ def axis_aligned_ellipsoid_loss_function(params, points):
 
 
 def fit_axis_aligned_ellipsoid_iteratively(points, max_iterations=3, outlier_std_dev=1.5, min_points=6, gtol=1e-5):
-    """
-    Iteratively fits an axis-aligned ellipsoid and removes outlier points.
-    """
     current_points = points.copy()
     last_successful_result = None
 
@@ -447,12 +337,6 @@ def fit_axis_aligned_ellipsoid_iteratively(points, max_iterations=3, outlier_std
 
 
 def fit_braincase(mesh, **settings):
-    """Fit the neurocranium ellipsoid of a skull mesh (the largest component, aligned so that x is the length).
-
-    Candidates are the most convex vertices of the rear region; the patch is the connected component of
-    candidates containing the most convex vertex. Any setting of BRAINCASE_SETTINGS can be overridden by
-    keyword. Returns None if the fit fails, else a dict with axes (a, b, c), center, inliers and seed_point.
-    """
     s = {**BRAINCASE_SETTINGS, **settings}
     v = mesh.vertices
     axis = {'x': 0, 'y': 1, 'z': 2}[s['axis']]
@@ -485,11 +369,7 @@ def fit_braincase(mesh, **settings):
     return dict(axes=params[3:6], center=params[:3], inliers=inliers, seed_point=v[seed])
 
 
-# ==============================================================================================================
-# WIDTH ANALYSES OF SI SECTION S2
-# ==============================================================================================================
 def midline_slope(t, y, n_slices=50):
-    """Slope, against t, of the midline through the centres of the y-extent of n_slices slices along t."""
     edges = np.linspace(t.min(), t.max(), n_slices + 1)
     index = np.clip(np.digitize(t, edges) - 1, 0, n_slices - 1)
     centres, mids = [], []
@@ -502,14 +382,13 @@ def midline_slope(t, y, n_slices=50):
 
 
 def width_measures(mesh):
-    """The beak tip lies at the minimum of x (the braincase region of the ellipsoid fit is at the maximum)."""
     v = mesh.vertices
     low, extent = mesh.bounds[0], mesh.bounding_box.extents
-    along = (v[:, 0] - low[0]) / extent[0]   # 0 at the beak tip, 1 at the back of the skull
+    along = (v[:, 0] - low[0]) / extent[0]
     up = (v[:, 2] - low[2]) / extent[2]
     ends = [int(np.argmax(v[:, 1])), int(np.argmin(v[:, 1]))]
-    yaw = np.arctan(midline_slope(v[:, 0], v[:, 1]))                         # dorsal view
-    roll = np.arctan(midline_slope(v[along > 0.5, 2], v[along > 0.5, 1]))   # posterior half
+    yaw = np.arctan(midline_slope(v[:, 0], v[:, 1]))
+    roll = np.arctan(midline_slope(v[along > 0.5, 2], v[along > 0.5, 1]))
     y_yaw = -v[:, 0] * np.sin(yaw) + v[:, 1] * np.cos(yaw)
     y_yaw_roll = y_yaw * np.cos(roll) - v[:, 2] * np.sin(roll)
     return dict(width_percentile=np.percentile(v[:, 1], 99.5) - np.percentile(v[:, 1], 0.5),
@@ -519,19 +398,12 @@ def width_measures(mesh):
                 width_vertex_up_max=up[ends].max())
 
 
-# ==============================================================================================================
-# THE SKULLS OUTSIDE THE FINCH DATASET (SI Section S4)
-# The 42 Hawaiian honeycreepers, the 9 cardueline relatives and the 3 rodent skulls, with the group, the species
-# and the remeshing parameter of each specimen. The parameter is read from the file name (..._p60.stl).
-# ==============================================================================================================
 HC, CARD, RODENT = 'Honeycreepers', 'HC relatives', 'Peromyscus'
-# The folders of the skulls, each with the names under which the repository may hold them. The 100 finch skulls
-# (Darwin's finches and their relatives together) are in one folder; the other three hold the skulls of SI S4.
 FINCH_FOLDER_NAMES = ('DF_and_their_relatives', 'dataset', 'DF_and_their_Relatives', 'Darwins_finches')
 OTHER_FOLDERS = [(('Honeycreepers_watertight', 'Honeycreepers_para', 'Honeycreepers'), HC, 42),
                  (('HC_Relatives_watertight', 'HC_Relatives_para', 'HC_Relatives'), CARD, 9),
                  (('Peromyscus', 'Peromyscus_watertight'), RODENT, 3)]
-SPECIES_NAMES = {   # the abbreviated binomial of the file name -> the species (SI Section S4)
+SPECIES_NAMES = {
     'C. flava': 'Chlorodrepanis flava', 'C. stejnegeri': 'Chlorodrepanis stejnegeri',
     'C. virens': 'Chlorodrepanis virens', 'H. wilsoni': 'Hemignathus wilsoni',
     'H. sanguinea': 'Himatione sanguinea', 'L. bailleui': 'Loxioides bailleui',
@@ -545,35 +417,35 @@ SPECIES_NAMES = {   # the abbreviated binomial of the file name -> the species (
     'P. pyrrhula': 'Pyrrhula pyrrhula',
     'Peromyscus Gossypinua': 'Peromyscus gossypinus', 'Peromyscus Gossypinus': 'Peromyscus gossypinus',
     'Peromyscus Simulus': 'Peromyscus simulus'}
-QUALITY = dict(min_inliers=40, max_fit_error=10.0, band_margin=0.05)   # the criteria of SI Section S4
-ASYMMETRIC = ['Loxops caeruleirostris', 'Loxops coccineus']            # excluded from the two-orbit comparison
+QUALITY = dict(min_inliers=40, max_fit_error=10.0, band_margin=0.05)
+ASYMMETRIC = ['Loxops caeruleirostris', 'Loxops coccineus']
 
 
 def species_of_file(name):
-    """The species of a mesh file: 'C.virensE_p35.stl' and 'C. virensA_p45.stl' are both Chlorodrepanis virens."""
     stem = re.sub(r'_p\d+$', '', os.path.splitext(name)[0]).replace('_', ' ').strip()
-    stem = re.sub(r'([A-Z]\.)\s*', r'\1 ', stem)              # 'C.virens' -> 'C. virens'
-    stem = re.sub(r'\s*watertight$', '', stem, flags=re.I)    # the rodent file names
-    stem = re.sub(r'[A-Z]$', '', stem).strip()                # drop the specimen letter
+    stem = re.sub(r'([A-Z]\.)\s*', r'\1 ', stem)
+    stem = re.sub(r'\s*watertight$', '', stem, flags=re.I)
+    stem = re.sub(r'[A-Z]$', '', stem).strip()
     return SPECIES_NAMES.get(stem, stem)
 
 
 def other_specimens(folders):
-    """The specimens of the folders found, in the order of the file names: group, species, remeshing parameter."""
     rows = []
     for path, group, _ in folders:
+        parameters_file = os.path.join(os.path.dirname(path), 'remeshing_parameters.csv')
+        parameters = (pd.read_csv(parameters_file).set_index('filename')['remeshing_parameter'].to_dict()
+                      if os.path.isfile(parameters_file) else {})
         for name in sorted(os.listdir(path)):
             if not name.endswith('.stl'):
                 continue
             parameter = re.search(r'_p(\d+)\.stl$', name)
             rows.append(dict(filename=name, path=os.path.join(path, name), group=group,
                              species=species_of_file(name),
-                             remeshing_parameter=int(parameter.group(1)) if parameter else np.nan))
+                             remeshing_parameter=int(parameter.group(1)) if parameter else parameters.get(name, np.nan)))
     return pd.DataFrame(rows, columns=['filename', 'path', 'group', 'species', 'remeshing_parameter'])
 
 
 def locate_folder(root, names):
-    """The first folder of `names` that exists in the repository folder, in dataset_other_taxa/, or beside it."""
     for place in (root, os.path.join(root, 'dataset_other_taxa'), os.path.join(root, 'dataset'),
                   os.path.dirname(root)):
         for name in names:
@@ -584,30 +456,23 @@ def locate_folder(root, names):
 
 
 def find_other_taxa(root):
-    """The folders of the skulls of SI Section S4, wherever the repository keeps them; [] if none is present."""
     found = [(locate_folder(root, names), group, expected) for names, group, expected in OTHER_FOLDERS]
     return [(folder, group, expected) for folder, group, expected in found if folder is not None]
 
 
 def align_by_principal_axes(mesh):
-    """Orient a mesh by its principal axes, x the longest, as the bird skulls of the dataset are oriented.
-
-    Only the rodent skulls need this: they do not come from the remeshing pipeline of SI Section S1 and reach
-    the script in an arbitrary orientation.
-    """
     vertices = np.asarray(mesh.vertices, float)
     centred = vertices - vertices.mean(axis=0)
-    axes = np.linalg.svd(centred, full_matrices=False)[2]        # rows: the principal axes, widest first
+    axes = np.linalg.svd(centred, full_matrices=False)[2]
     if np.linalg.det(axes) < 0:
         axes[2] *= -1
     oriented = mesh.copy()
-    with np.errstate(all='ignore'):   # Accelerate on macOS raises spurious flags here; the product is finite
+    with np.errstate(all='ignore'):
         oriented.vertices = np.ascontiguousarray(centred) @ np.ascontiguousarray(axes.T)
     return oriented
 
 
 def fit_quality(mesh, fit):
-    """The quantities of SI Section S4 for one fit: inliers, fit error (% of the radius) and where the sphere sits."""
     if fit is None:
         return dict(sphere_radius=np.nan, orbit_inliers=np.nan, fit_error_pct=np.nan, orbit_patch=np.nan,
                     sphere_center_along_pct=np.nan)
@@ -620,12 +485,10 @@ def fit_quality(mesh, fit):
 
 
 def reliable(frame):
-    """The two criteria of SI Section S4: at least 40 inliers and a fit error of at most 10% of the radius."""
     return (frame.orbit_inliers >= QUALITY['min_inliers']) & (frame.fit_error_pct <= QUALITY['max_fit_error'])
 
 
 def flag_reason(row):
-    """Why a fit is flagged, in the wording of SI Section S4."""
     band = ORBIT_SETTINGS['band_start'], ORBIT_SETTINGS['band_end']
     reasons = []
     if np.isfinite(row.sphere_center_along_pct) and min(abs(row.sphere_center_along_pct / 100 - edge)
@@ -639,15 +502,13 @@ def flag_reason(row):
 
 
 def second_orbit(mesh, first):
-    """Fit the orbit of the other half of the skull, with the search band restricted to that side (SI Section S5)."""
     if first is None:
         return None
-    side = 'left' if first['center'][1] >= 0 else 'right'    # the side the first fit did not use
+    side = 'left' if first['center'][1] >= 0 else 'right'
     return fit_orbit(mesh, side=side)
 
 
 def measure_other_skull(path, group, with_second_orbit=True):
-    """Orbit measurements of one skull outside the finch dataset, with the settings used for the finches."""
     mesh, topology = load_skull(path)
     if group == RODENT:
         mesh = align_by_principal_axes(mesh)
@@ -663,9 +524,6 @@ def measure_other_skull(path, group, with_second_orbit=True):
     return record, dict(mesh=mesh, orbit=orbit)
 
 
-# ==============================================================================================================
-# ONE SKULL: all measurements
-# ==============================================================================================================
 COLUMNS = ['filename', 'length_x', 'width_y', 'height_z', 'sphere_radius', 'curvature',
            'sphere_center_x', 'sphere_center_y', 'sphere_center_z', 'orbit_inliers', 'orbit_seed_rank',
            'ellipsoid_axis_a', 'ellipsoid_axis_b', 'ellipsoid_axis_c',
@@ -674,8 +532,6 @@ COLUMNS = ['filename', 'length_x', 'width_y', 'height_z', 'sphere_radius', 'curv
 
 
 def measure_skull(path, extras=False, return_fits=False):
-    """All measurements of one .stl skull. With extras=True, also its topology, the SI width analyses (Section S2)
-    and the second orbit of the skull (Section S5)."""
     start = time.perf_counter()
     mesh, topology = load_skull(path)
     record = dict.fromkeys(COLUMNS, np.nan)
@@ -705,9 +561,6 @@ def measure_skull(path, extras=False, return_fits=False):
     return (record, dict(mesh=mesh, orbit=orbit, braincase=braincase)) if return_fits else record
 
 
-# ==============================================================================================================
-# DISPLAY OF THE FITS (only if SHOW_FITS = True)
-# ==============================================================================================================
 def _pyvista():
     try:
         import pyvista
@@ -753,11 +606,7 @@ def show_braincase_fit(mesh, fit, title=''):
     plotter.show()
 
 
-# ==============================================================================================================
-# COMPARISON WITH THE PRINTED VALUES AND THE REPORT
-# ==============================================================================================================
 def verdict(counts):
-    """One sentence: how many printed numbers were reproduced, and from what."""
     total, agree, differ = int(sum(counts)), int(counts.get('yes', 0)), int(counts.get('NO', 0))
     source = ('from Dataset.xlsx (quick run; the meshes were not refitted)' if QUICK_RUN else
               f'from the {MEASURED_MESHES} skull meshes')
@@ -769,7 +618,6 @@ def verdict(counts):
 
 
 def agrees(reported, value, tolerance=None):
-    """Does `value` agree with the printed string `reported` to the precision printed?"""
     if value is None or not np.isfinite(float(value)):
         return None, 'not computed'
     value, text = float(value), str(reported).strip()
@@ -796,8 +644,8 @@ def md(text):
 class Report:
     def __init__(self, out):
         self.out = out
-        self.items = []   # ('section', title) | ('check', dict) | ('note', text) | ('table', title, frame, number)
-        self.tables = {}  # SI table number -> rows, printed values and reproduced values
+        self.items = []
+        self.tables = {}
         self.section_title = ''
 
     def section(self, title):
@@ -815,7 +663,6 @@ class Report:
         self.items.append(('check', row))
 
     def table(self, title, row_labels, column_labels, reported, values, csv_name):
-        """Compare a printed table cell by cell and show the reproduced table."""
         shown = pd.DataFrame('', index=row_labels, columns=column_labels)
         for i, r in enumerate(row_labels):
             for j, c in enumerate(column_labels):
@@ -878,9 +725,6 @@ class Report:
         return counts
 
 
-# ==============================================================================================================
-# STATISTICS OF THE PAPER, WITH THE PRINTED VALUES
-# ==============================================================================================================
 def spearman(a, b):
     return stats.spearmanr(np.asarray(a, float), np.asarray(b, float))
 
@@ -909,7 +753,6 @@ def run_statistics(D, specimens, full, rep):
     groups = {"Darwin's finches": finch, 'DF relatives': relative, 'All': np.ones(len(D), bool)}
     wide = D.species.isin(WIDE_SPECIES).values
 
-    # ---------------------------------------------------------------- Materials and Methods
     rep.section('Materials and Methods: dataset and mesh processing')
     rep.check('Specimens', '100', len(D))
     rep.check("Darwin's finches (SI Table S1)", '53', finch.sum())
@@ -959,7 +802,7 @@ def run_statistics(D, specimens, full, rep):
              f"{So['min_patch']} vertices. Braincase: curvature neighbourhood radius {Sb['curvature_radius']} mm, "
              f"{Sb['candidate_count']} candidate vertices, patches of at least {Sb['min_patch']} vertices, "
              f"seed-to-centre distance at most {Sb['max_seed_to_centre']} mm.")
-    fewest = Sb['min_patch']   # smallest possible point cloud at each check of the ellipsoid fit
+    fewest = Sb['min_patch']
     for _ in range(Sb['max_iterations'] - 1):
         fewest -= int(fewest / (1 + Sb['outlier_std'] ** 2))
     if fewest > Sb['min_points']:
@@ -968,7 +811,6 @@ def run_statistics(D, specimens, full, rep):
                  f"1/(1 + {Sb['outlier_std']}^2) of them (Cantelli's inequality), so at least {fewest} points remain "
                  f"at every check. The limit therefore never changes a fit.")
 
-    # ---------------------------------------------------------------- Results: scaling
     rep.section('Results: expected scaling between skull size and orbit radius (Fig. 9)')
     printed = {"Darwin's finches": ['0.740', '0.802', '0.775'], 'DF relatives': ['0.712', '0.863', '0.902'],
                'All': ['0.759', '0.838', '0.848']}
@@ -1052,7 +894,6 @@ def run_statistics(D, specimens, full, rep):
     rep.note(f"C. flaveola / T. canora: width ratio {flaveola.width_y.mean() / canora.width_y.mean():.2f}, "
              f"height ratio {flaveola.height_z.mean() / canora.height_z.mean():.2f} (text: same width and height).")
 
-    # ---------------------------------------------------------------- Results: prediction
     rep.section('Results: curvature model, Eq. (8), and SI Table S11')
     train = (D.Model == 'Training').values
     test = ~train
@@ -1104,7 +945,6 @@ def run_statistics(D, specimens, full, rep):
     rep.table('SI Table S11: prediction of the orbit curvature from the skull dimensions', table_rows,
               ['intercept', 'slope', 'R2_test', 'MRE (%)'], reported, values, 'TableS11.csv')
 
-    # ---------------------------------------------------------------- Results: size-independent descriptors
     rep.section('Results: size-independent descriptors (Figs. 11-12; SI Tables S9-S10)')
     for label, mask, printed_rho, printed_p in [('all 100 specimens', groups['All'], '-0.05', '0.59'),
                                                 ("Darwin's finches", finch, '-0.14', '0.33'),
@@ -1169,7 +1009,6 @@ def run_statistics(D, specimens, full, rep):
               ['n', 'kappa mean', 'kappa SD', 'c/b mean', 'c/b SD', 'x/y mean', 'x/y SD', 'L mean', 'L SD'],
               [printed_s10[g] for g in GENERA], values, 'TableS10.csv')
 
-    # ---------------------------------------------------------------- Results: neurocranium
     rep.section('Results: neurocranial geometry (SI Tables S12-S17)')
     D['one_over_curvature'] = D.sphere_radius
     variables = ['ellipsoid_axis_a', 'ellipsoid_axis_b', 'ellipsoid_axis_c', 'one_over_curvature', 'curvature']
@@ -1200,7 +1039,6 @@ def run_statistics(D, specimens, full, rep):
         rep.table(f'SI Table {number}: {method.capitalize()}, {group}', labels_rows, labels_columns, reported,
                   correlation_matrix(D, masks[group], variables, columns, method), f'Table{number}.csv')
 
-    # ---------------------------------------------------------------- Discussion
     rep.section('Discussion')
     if full:
         rep.check('Median number of inlier points per orbit', '112', D.orbit_inliers.median())
@@ -1212,7 +1050,6 @@ def run_statistics(D, specimens, full, rep):
 
 
 def run_other_taxa_statistics(O, D, full, rep):
-    """SI Section S4: the 51 skulls outside the finch dataset, and the rodent skulls on which the method stops."""
     O = O.copy()
     birds = O[O.group != RODENT].copy()
     birds['L'] = (birds.length_x * birds.width_y * birds.height_z) ** (1 / 3)
@@ -1343,7 +1180,6 @@ def run_other_taxa_statistics(O, D, full, rep):
 
 
 def run_damage_statistics(D, O, full, rep):
-    """SI Section S5: fits on damaged skulls, and the agreement between the two orbits of a skull."""
     rep.section('SI Section S5: damaged skulls and the agreement between the two orbits')
     if not full:
         rep.note('SI Section S5 needs the fits; it is skipped in a quick run (QUICK_RUN = True).')
@@ -1361,8 +1197,6 @@ def run_damage_statistics(D, O, full, rep):
     rep.check('Mann-Whitney p, fit error damaged against intact', '0.84',
               stats.mannwhitneyu(D.fit_error_pct[~D.intact], D.fit_error_pct[D.intact]).pvalue, tolerance=0.005)
 
-    # Deviation of the radius of a skull from the mean of its conspecifics (the other specimens of its species,
-    # the skull itself excluded), in the species with at least 3 specimens
     key = ['genus', 'species'] if 'genus' in D.columns else ['species']
     total = D.groupby(key).sphere_radius.transform('sum')
     species_size = D.groupby(key).sphere_radius.transform('size')
@@ -1388,7 +1222,6 @@ def run_damage_statistics(D, O, full, rep):
         rep.check('SI Fig. S8(b), G. difficilis specimen A: difference between the two radii (%)', '2.8',
                   100 * abs(one.second_sphere_radius - one.sphere_radius) / one.sphere_radius)
 
-    # The two orbits of a skull, fitted independently (SI Fig. S8(b))
     for label, frame, printed in [('finch specimens', D, ['83', '5', '8', '15', '0.86']),
                                   ('honeycreepers and relatives', O[(O.group != RODENT) &
                                                                     (~O.species.isin(ASYMMETRIC))],
@@ -1433,9 +1266,6 @@ def compare_with_dataset(M, dataset, rep):
                  'output/verify_all/measurements.xlsx written by this run; copy the columns into Dataset.xlsx before release.')
 
 
-# ==============================================================================================================
-# THE SI TABLES IN THE LAYOUT OF THE SUPPORTING INFORMATION (results/SI_tables.tex, SI_tables.pdf, report.md)
-# ==============================================================================================================
 COMMON_NAMES = {'Camarhynchus': 'Tree Finch', 'Certhidea': 'Warbler Finch', 'Geospiza': 'Ground Finch',
                 'Pinaroloxias': 'Cocos Finch', 'Platyspiza': 'Vegetarian Finch', 'Coereba': 'Bananaquit',
                 'Euneornis': 'Orangequit', 'Loxigilla': 'Bullfinch', 'Loxipasser': 'Grassquit',
@@ -1481,7 +1311,6 @@ def latex_escape(text):
 
 
 def _unwrap(text, command, before='', after=''):
-    """Replace \\command{argument} by before + argument + after (the argument may contain braces)."""
     key = '\\' + command + '{'
     while key in text:
         start = text.index(key)
@@ -1497,7 +1326,6 @@ SUPERSCRIPTS = str.maketrans('-0123456789', '⁻⁰¹²³⁴⁵⁶⁷⁸⁹')
 
 
 def to_plain(text):
-    """The LaTeX of the tables as readable text, for report.md."""
     text = _unwrap(text, 'textcolor{red}', '**', '**')
     for old, new in [(r'\tilde{\kappa}', 'κ̃'), (r'\hat{r}', 'r̂'), (r'R^2_{\mathrm{test}}', 'R²_test'),
                      (r'F_{10,89}', 'F(10,89)'), (r'\eta^2', 'η²'), (r'\rho', 'ρ'), (r'\pm', '±'), ('^{1/3}', '^(1/3)'),
@@ -1512,7 +1340,6 @@ def to_plain(text):
 
 
 def _cell(table, i, j, math=False):
-    """Reproduced cell rounded as printed, as LaTeX; red when it differs from the printed value."""
     printed, value = table['reported'][i][j], table['values'][i][j]
     ok, text = agrees(printed, value)
     if ok is None:
@@ -1536,7 +1363,6 @@ def _pair(table, i, j_mean, j_sd):
 
 
 def build_si_tables(rep, specimens):
-    """Every SI table as rows of LaTeX cells, in the layout of the Supporting Information."""
     models = {}
 
     def add(number, label, caption, header, body, spec, rules='booktabs', small=False, kind='results',
@@ -1736,7 +1562,6 @@ def markdown_table(model):
 
 
 def _readable(text):
-    """A quantity or value of the text checks as LaTeX, with the usual notation."""
     text = latex_escape(text)
     for old, new in [(r'length\_x', r'length $x$'), (r'width\_y', r'width $y$'), (r'height\_z', r'height $z$'),
                      (r'R2\_test', r'$R^2_{\mathrm{test}}$'), (r'eta\textasciicircum{}2', r'$\eta^2$'),
@@ -1805,7 +1630,6 @@ def write_si_latex(models, rep, out, generated, mode, versions):
 
 
 def compile_latex(tex_path):
-    """Compile SI_tables.tex to a PDF if LaTeX is installed; returns (pdf path or None, message)."""
     import glob
     import shutil
     candidates = [shutil.which('pdflatex'), '/Library/TeX/texbin/pdflatex', '/opt/homebrew/bin/pdflatex',
@@ -1815,7 +1639,7 @@ def compile_latex(tex_path):
         return None, 'no LaTeX found on this computer; compile SI_tables.tex with LaTeX or Overleaf'
     folder, name = os.path.split(tex_path)
     stem = tex_path[:-len('.tex')]
-    for _ in range(2):   # twice, for the column widths of the long table
+    for _ in range(2):
         try:
             result = subprocess.run([program, '-interaction=nonstopmode', '-halt-on-error', name], cwd=folder,
                                     capture_output=True, text=True, errors='replace', timeout=300)
@@ -1829,9 +1653,6 @@ def compile_latex(tex_path):
     return stem + '.pdf', None
 
 
-# ==============================================================================================================
-# THE SAME DOCUMENT AS A WEB PAGE (results/SI_tables.html; needs no LaTeX, opens in any web browser)
-# ==============================================================================================================
 PAGE_STYLE = """
 body { background: #f2f2ef; margin: 0; }
 main { max-width: 900px; margin: 2rem auto; background: #fff; padding: 2.5rem 3rem; color: #111;
@@ -1862,7 +1683,6 @@ table.wide { width: 100%; }
 
 
 def to_html(text):
-    """The LaTeX of the tables and captions as HTML."""
     text = html.escape(text, quote=False).replace(r'Table~\ref{tab:spearman_1overr}', 'Table S4')
     for old, new in [(r'\tilde{\kappa}', 'κ̃'), (r'\hat{r}', 'r̂'), (r'R^2_{\mathrm{test}}', 'R<sup>2</sup><sub>test</sub>'),
                      (r'F_{10,89}', 'F<sub>10,89</sub>'), (r'\eta^2', 'η<sup>2</sup>'), (r'\rho', 'ρ'), (r'\pm', '±'),
@@ -1966,12 +1786,9 @@ def write_si_html(models, rep, out, generated, mode, versions):
     return path
 
 
-# ==============================================================================================================
-# THE TABLES IN THE CONSOLE (PRINT_TABLES = True)
-# ==============================================================================================================
 USE_COLOUR = (os.environ.get('PYCHARM_HOSTED') == '1' or sys.stdout.isatty()) and 'NO_COLOR' not in os.environ
 if USE_COLOUR and os.name == 'nt':
-    os.system('')   # lets the Windows console show colours
+    os.system('')
 
 
 def _colour(text, code):
@@ -1979,7 +1796,6 @@ def _colour(text, code):
 
 
 def _width(text):
-    """Printed width of a string: colour codes and combining accents take no space."""
     return sum(1 for character in re.sub(r'\x1b\[[0-9;]*m', '', text) if not unicodedata.combining(character))
 
 
@@ -1994,7 +1810,6 @@ def _wrap(text, width, code=None):
 
 
 def console_text(text):
-    """A table cell as plain text; a cell that differs from the paper is red (or marked (!) without colours)."""
     return re.sub(r'\*\*(.+?)\*\*', lambda m: _colour(m.group(1), '31') if USE_COLOUR else m.group(1) + ' (!)',
                   to_plain(text))
 
@@ -2087,7 +1902,6 @@ def console_summary(rep):
 
 
 def print_console_report(models, rep, everything):
-    """Every table and number (everything=True), or only the tables and numbers that differ from the paper."""
     tables = [n for n in (f'S{k}' for k in range(1, 18)) if n in models and (everything or models[n]['differences'])]
     checks = [item[1] for item in rep.items if item[0] == 'check']
     checks = checks if everything else [row for row in checks if row['agrees'] != 'yes']
@@ -2101,9 +1915,6 @@ def print_console_report(models, rep, everything):
     print(console_summary(rep))
 
 
-# ==============================================================================================================
-# RUN EVERYTHING
-# ==============================================================================================================
 def measure_all(meshes, specimens):
     rows = []
     for i, name in enumerate(specimens.filename, start=1):
@@ -2129,11 +1940,6 @@ OTHER_COLUMNS = ['filename', 'group', 'species', 'remeshing_parameter', 'length_
 
 
 def measure_other_taxa(folders, out):
-    """Fit the orbit of every skull of SI Section S4 and write output/verify_all/Dataset_other_taxa.xlsx.
-
-    The settings are those used for the finch specimens and no per-specimen input is given. The rodent skulls are
-    oriented by their principal axes first, because they do not come from the remeshing of SI Section S1.
-    """
     specimens = other_specimens(folders)
     rows = []
     for i, specimen in enumerate(specimens.itertuples(), start=1):
@@ -2158,7 +1964,6 @@ def measure_other_taxa(folders, out):
 
 
 def find_repository(folder):
-    """The repository folder, the folder of the 100 finch meshes and Dataset.xlsx, wherever they are kept."""
     root = os.path.abspath(folder or os.path.dirname(os.path.abspath(__file__)))
     meshes = locate_folder(root, FINCH_FOLDER_NAMES)
     spreadsheet = next((path for path in (os.path.join(root, 'Dataset.xlsx'),
@@ -2174,9 +1979,9 @@ def find_repository(folder):
 
 def main():
     if hasattr(sys.stdout, 'reconfigure'):
-        sys.stdout.reconfigure(errors='replace')   # never stop on a character the console cannot show
+        sys.stdout.reconfigure(errors='replace')
     root, meshes, spreadsheet = find_repository(REPOSITORY_FOLDER)
-    out = str(paths.output_dir(__file__))   # output/verify_all/
+    out = str(paths.output_dir(__file__))
     os.makedirs(os.path.join(out, 'tables'), exist_ok=True)
     dataset = pd.read_excel(spreadsheet, nrows=100)
     specimens = specimen_table(meshes if meshes else dataset.filename)
@@ -2270,7 +2075,7 @@ def main():
     if OPEN_RESULTS:
         try:
             webbrowser.open(Path(pdf or page).resolve().as_uri())
-        except Exception:   # no browser on this computer (for example a server)
+        except Exception:
             pass
 
 

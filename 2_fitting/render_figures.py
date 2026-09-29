@@ -28,39 +28,29 @@ from pathlib import Path
 import numpy as np
 import pyvista as pv
 
-# --- project paths: the meshes are read from data/ (see paths.py in the project folder) ---
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths
 
-# --- paths ----------------------------------------------------------------
-# Defaults used when no command-line arguments are given, resolved relative
-# to this file so Run works straight out of PyCharm. The meshes are split
-# across several folders; each name in the workbook is looked up in all of
-# them, in order, and subfolders are searched too. Add or remove entries
-# freely.
 HERE = Path(__file__).resolve().parent
 STL_DIRS = [
-    paths.CARDUELINES,      # data/HC_Relatives_watertight
-    paths.HONEYCREEPERS,    # data/Honeycreepers_watertight
-    paths.PEROMYSCUS,       # data/Peromyscus
+    paths.CARDUELINES,
+    paths.HONEYCREEPERS,
+    paths.PEROMYSCUS,
 ]
-# Checked in order; if none exist, the whole project tree is searched for
-# any workbook whose name contains "sphere_fitting".
-BATCH_OUTPUT = HERE / "output" / "fit_sphere_batch"   # written by fit_sphere_batch.py
+BATCH_OUTPUT = HERE / "output" / "fit_sphere_batch"
 XLSX_CANDIDATES = [
     BATCH_OUTPUT / "measurement_sphere_fitting_ALL.xlsx",
 ]
 XLSX_SEARCH_ROOTS = [HERE / "output"]
 OUT_DIR = BATCH_OUTPUT / "images"
 
-# --- look and feel --------------------------------------------------------
-WINDOW_SIZE = (1800, 650)       # 3 panels of 600x650
+WINDOW_SIZE = (1800, 650)
 MESH_COLOR = "lightgray"
-MESH_OPACITY = 0.45             # lets the sphere show through the skull
+MESH_OPACITY = 0.45
 SPHERE_COLOR = "blue"
-SPHERE_RES = 40                 # theta/phi resolution of the wireframe
+SPHERE_RES = 40
 POINT_COLOR = "red"
 POINT_SIZE = 8.0
 SEED_COLOR = "lime"
@@ -69,9 +59,6 @@ TITLE_FONT_SIZE = 10
 LABEL_FONT_SIZE = 11
 CAMERA_ZOOM = 1.0
 
-# label, camera direction from the focal point, view-up
-# +x is the occiput end, so the dorsal panel uses +x as up and the bill
-# points down the screen.
 VIEWS = [
     ("left lateral (from -y)", (0.0, -1.0, 0.0), (0.0, 0.0, 1.0)),
     ("right lateral (from +y)", (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
@@ -80,12 +67,6 @@ VIEWS = [
 
 
 def find_workbook() -> Path | None:
-    """Locate the results workbook.
-
-    Tries XLSX_CANDIDATES first, then falls back to searching the project
-    tree for anything named like the fitting output. Skips virtualenvs,
-    caches and Excel lock files.
-    """
     for c in XLSX_CANDIDATES:
         if c.exists():
             return c
@@ -104,19 +85,12 @@ def find_workbook() -> Path | None:
 
     if not hits:
         return None
-    # Prefer the one nearest this script, then the most recently modified.
     hits.sort(key=lambda h: (len(h.relative_to(h.anchor).parts),
                              -h.stat().st_mtime))
     return hits[0]
 
 
 def find_mesh(name: str, dirs: list[Path]) -> Path | None:
-    """Locate one mesh by filename across several folders.
-
-    Tries an exact path in each folder first, then falls back to a recursive
-    case-insensitive search, which covers meshes tucked into subfolders or
-    saved as .STL.
-    """
     for d in dirs:
         hit = d / name
         if hit.exists():
@@ -131,13 +105,6 @@ def find_mesh(name: str, dirs: list[Path]) -> Path | None:
 
 def inlier_points(mesh: pv.PolyData, center: np.ndarray, radius: float,
                   n_inliers: int | None, shell: float = 1.5) -> np.ndarray:
-    """Recover the red dots: the mesh vertices that lie on the fitted sphere.
-
-    Keeps vertices inside a `shell` * radius ball around the centre, ranks them
-    by how far they sit off the sphere surface, and returns the best
-    `n_inliers` of them. Pass n_inliers=None to keep everything within the
-    ball that is within 15% of the radius of the surface.
-    """
     verts = np.asarray(mesh.points, dtype=float)
     d = np.linalg.norm(verts - center, axis=1)
     near = d <= shell * radius
@@ -154,7 +121,6 @@ def inlier_points(mesh: pv.PolyData, center: np.ndarray, radius: float,
 def render(mesh: pv.PolyData, center, radius: float, points: np.ndarray,
            title: str = "", out_png: Path | None = None, show: bool = False,
            seed=None):
-    """Draw the three-panel figure. Saves to out_png, or opens a window."""
     center = np.asarray(center, dtype=float).reshape(3)
     focus = np.array(mesh.center)
     dist = float(np.ptp(np.array(mesh.bounds).reshape(3, 2), axis=1).max()) * 2.0
@@ -186,7 +152,7 @@ def render(mesh: pv.PolyData, center, radius: float, points: np.ndarray,
 
         pl.camera_position = [tuple(focus + np.array(direction) * dist),
                               tuple(focus), tuple(up)]
-        pl.reset_camera()               # refit bounds, keeping direction + up
+        pl.reset_camera()
         pl.camera.zoom(CAMERA_ZOOM)
 
     if show:
@@ -197,11 +163,6 @@ def render(mesh: pv.PolyData, center, radius: float, points: np.ndarray,
 
 
 def title_for(row) -> str:
-    """Build the caption from whatever columns the workbook happens to have.
-
-    fit_sphere.py writes nine columns; the later pipeline writes sixteen.
-    Anything missing is simply left out of the caption.
-    """
     parts = [str(row["filename"]), f"r = {row['sphere_radius']:.2f} mm"]
     if row.get("n_inliers") is not None:
         parts.append(f"{int(row['n_inliers'])} inliers")
@@ -288,7 +249,7 @@ def main(argv=None) -> int:
             print(f"  !! {row['filename']} not found in any mesh folder")
             continue
 
-        mesh = pv.read(stl).clean()     # clean() merges STL's duplicated verts
+        mesh = pv.read(stl).clean()
         center = np.array([row["sphere_center_x"],
                            row["sphere_center_y"],
                            row["sphere_center_z"]])

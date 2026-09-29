@@ -1,40 +1,12 @@
-"""check_orbits.py -- fit both orbits of every skull in the mesh folders and render them
-so the fits can be checked by eye.  Press Run; no arguments needed.
-
-For each skull it produces one row of three panels:
-
-    left    the orbit the pipeline measured (lateral view from the side the sphere sits on)
-    middle  a horizontal slice through the sphere centre, seen from above, carrying both orbits
-    right   the orbit found on the other half of the skull (SI Section S5)
-
-Blue = fitted sphere, red = inlier vertices, green = seed vertex.  The titles give the radius,
-the inlier count, the fit error and whether the fit meets the quality criteria of SI Section S4
-(at least 40 inliers and a fit error of at most 10% of the radius).
-
-Output, in the folder named by OUT_DIR:
-
-    OUTPUT = "pdf"   one multi-page PDF per group, e.g. orbit_fit_check_darwins_finches.pdf
-    OUTPUT = "png"   one image per page, e.g. orbit_fit_check_darwins_finches_p01.png
-                     (with ROWS_PER_PAGE = 1 the file is named after the specimen instead)
-
-plus two_orbit_results.csv and the Section S5 summary printed at the end.
-
-verify_fit.py must sit in the same folder as this file. The meshes are read from the folders of
-data/ named in FOLDERS (see paths.py), and everything is written to output/two_orbit/.
-
-Note: the meshes in the Peromyscus folder are the raw scans.  Unless they have been aligned by
-their principal axes, their fits differ from the ones reported in SI Section S4, and they are
-never part of the two-orbit statistics.
-"""
 import sys, os, glob
 import numpy as np
 import pandas as pd
 import trimesh
 import matplotlib
 
-np.seterr(all="ignore")     # silence the harmless matmul warnings from degenerate faces
+np.seterr(all="ignore")
 
-SHOW = False                # True: also display each page while it is made (use "macosx" if TkAgg fails)
+SHOW = False
 matplotlib.use("TkAgg" if SHOW else "Agg")
 import matplotlib.pyplot as plt
 from matplotlib.collections import PolyCollection
@@ -42,34 +14,30 @@ from matplotlib.collections import PolyCollection
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from verify_fit import run
 
-# --- project paths: the meshes are read from data/ (see paths.py in the project folder) ---
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths
 
-# ---- settings ----
 HERE = os.path.dirname(os.path.abspath(__file__))
-DATA = str(paths.DATA)                 # the mesh folders below are looked up here
+DATA = str(paths.DATA)
 FOLDERS = ["DF_and_their_relatives", "Honeycreepers_watertight", "HC_Relatives_watertight", "Peromyscus"]
 LABELS = {"DF_and_their_relatives": "darwins_finches_and_relatives",
           "Honeycreepers_watertight": "hawaiian_honeycreepers",
           "HC_Relatives_watertight": "cardueline_relatives",
           "Peromyscus": "peromyscus"}
-FINCH_FOLDERS = "DF_and_their_relatives|dataset"   # counted as finches in the summary
+FINCH_FOLDERS = "DF_and_their_relatives|dataset"
 OUT_DIR = os.path.join(str(paths.output_dir(__file__)), "orbit_fit_check")
 PREFIX = "orbit_fit_check"
-OUTPUT = "png"              # "png": one image per skull; "pdf": one multi-page PDF per group
+OUTPUT = "png"
 CSV = os.path.join(str(paths.output_dir(__file__)), "two_orbit_results.csv")
-ROWS_PER_PAGE = 1           # 1 = one skull per image
+ROWS_PER_PAGE = 1
 MIN_INLIERS, MAX_FIT_ERR = 40, 10.0
-SECTION_BAND = 0.6          # mm, inliers drawn in the section panel
-TITLE_STYLE = "short"       # "short": file name and side only; "full": also radius, inliers, fit error
+SECTION_BAND = 0.6
+TITLE_STYLE = "short"
 MEASURED_LABEL = "orbit measured by the pipeline"
 OPPOSITE_LABEL = "orbit on the opposite side"
-SHOW_SIGN = False           # True appends the half of the skull, e.g. "(y>0)", for traceability
-# The alignment fixes the axes, not the handedness of the bird, so the panels name the fit
-# rather than the side.  Use "left" and "right" only if the handedness of the scans is known.
+SHOW_SIGN = False
 
 
 def largest_component(file_path):
@@ -79,7 +47,6 @@ def largest_component(file_path):
 
 
 def lateral(ax, mesh, centre, radius, inliers, seed, title):
-    """Lateral view (x horizontal, z vertical) seen from the side the sphere is on."""
     view = 1.0 if centre[1] >= 0 else -1.0
     V, F = mesh.vertices, mesh.faces
     order = np.argsort((view * V[:, 1])[F].mean(axis=1))
@@ -102,14 +69,6 @@ def lateral(ax, mesh, centre, radius, inliers, seed, title):
 
 
 def section(ax, mesh, first, second, title):
-    """Horizontal slice through the pipeline sphere centre, seen from above (x right, y up).
-
-    Blue solid  = the sphere the pipeline fitted.
-    Dashed      = the sphere fitted on the other half, orange if it meets the quality
-                  criteria, grey if not.  Its circle is the true cross-section of that
-                  sphere at this height, so it is slightly smaller than its radius when
-                  the two spheres sit at different heights.
-    """
     centre = np.array([first["cx"], first["cy"], first["cz"]])
     try:
         cut = mesh.section(plane_origin=centre, plane_normal=[0, 0, 1])
@@ -164,7 +123,6 @@ fig = axs = pdf = None
 
 
 def open_output(folder):
-    """Start the output for a group: one PDF, or nothing to do for PNG."""
     global pdf, page_no
     page_no = 0
     if OUTPUT == "pdf":
@@ -288,7 +246,6 @@ d = pd.DataFrame(rows)
 d.to_csv(os.path.join(HERE, CSV), index=False)
 print("written", os.path.join(HERE, CSV), "(%d rows)" % len(d))
 
-# ---- summary as reported in SI Section S5 (rodents excluded) ----
 from scipy.stats import spearmanr
 s = d[(d.status == "ok") & (~d.filename.str.contains("Peromyscus", case=False))].copy()
 s["finch"] = s.folder.str.contains(FINCH_FOLDERS, case=False)

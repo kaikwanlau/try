@@ -13,6 +13,7 @@ them through `paths.py` in the repository root.
 | `Dataset.xlsx` | all measurements of the 100 finch specimens |
 | `Dataset_training.xlsx` | the 50 training specimens of Eq. (8) |
 | `Dataset_other_taxa.xlsx` | the per-specimen values of SI Section S4 |
+| `remeshing_parameters.csv` | remeshing settings for the specimens whose filename suffixes were removed |
 | `figure_inputs/` | inputs used only by `5_figures/figure.py` |
 
 The scripts only read from this folder; their results go into `output/` next to each script.
@@ -49,4 +50,4 @@ Preserve the original source attributions and check the terms attached to each s
 
 The statistics scripts read the released workbooks in this folder. The fitting scripts write new workbooks under their output folders; those do not automatically replace the released tables. Keep your own inputs in a separate folder and retain the measurement version used in an analysis.
 
-Folder names and specimen filenames retain their original spelling and capitalization. See the paper’s specimen lists for taxonomic details.
+Specimen names retain their original spelling and capitalization. Remeshing settings are recorded in `remeshing_parameters.csv` rather than in the filenames. See the paper’s specimen lists for taxonomic details.

@@ -1,50 +1,21 @@
 #!/usr/bin/env python3
-"""
-remesh_in_pycharm.py -- one script that stays open: drop a raw scan into dataset_CT/, it is remeshed by your MATLAB
-code (called from Python), the orbit sphere is fitted, and the picture opens. No copying between programs.
-
-Setup (once):
-    pip install matlabengine            # must match your MATLAB release: R2025a -> pip install "matlabengine==25.1.*"
-                                        # R2024b -> "==24.2.*", R2024a -> "==24.1.*", R2023b -> "==23.2.*"
-                                        # if the import fails, the script falls back to running the matlab binary (slower start)
-Layout:
-    minor_revision/
-      dataset_CT/           <- drop raw scan meshes here (.stl/.ply/.obj/.off); one or many
-      Remeshing/            <- your MATLAB folder (code/ with mex files + remesh_batch.m)   [or give --remeshing-dir]
-      params.csv            <- optional: filename,para,reason  (raw filename; unlisted = 60)
-      remesh_in_pycharm.py  <- run this and leave it running (Ctrl-C / stop button to end)
-      fit_sphere_logged.py  <- needs the version with --rmin/--rmax (accepts --roi already)
-      check_orbit.py        <- needs the version with --roi/--rmin/--rmax
-Outputs:
-    dataset_remeshed/<specimen>_p<para>.stl + remeshing_log.csv
-    results/ (accepted.xlsx, failed.txt, attempts.csv, final.xlsx, renders/*.png)    <- same as check_orbit.py
-    With a search band or radius window other than the released ones, the results go to their own folder,
-    e.g. results_roi10-90/ or results_roi10-90_r2-60/, so fits made with different settings are never mixed.
-"""
 import argparse, glob, io, os, shutil, subprocess, sys, time
 import pandas as pd
 
-# =====================================================================================================
-#  SETTINGS - edit here
-# =====================================================================================================
 PARA_DEFAULT = 60
-PARA = {                     # per-skull overrides: raw filename -> parameter   (params.csv also works)
-    # 'L.brandtiB.stl': 75,
-    # 'V. coccineaA.stl': 50,
+PARA = {
 }
-SEED       = 0               # RNG state reset to this before every skull, so the remeshing is reproducible
-MESHFIX    = True            # passed explicitly, so a run never depends on remesh_batch.m's defaults
-RESCALE    = False           # True = ICP + rescaling to the raw scan (moves the mesh; keep False to compare runs)
-FIT_TARGET = 400             # number of most-concave vertices used as candidates (released code: 400)
-FIT_BALL   = 2.0             # radius in mm of the curvature ball (released code: 2.0)
-FIT_RULE   = 'relative'      # 'relative' = scale-free acceptance rule (0.10 <= r/L <= 0.27); 'mm' = radius window below
-FIT_ROI    = (0.10, 0.90)    # search band along the skull length, as fractions (released code: 0.30, 0.70)
-FIT_RMIN   = 2.0             # FIT_RULE = 'mm' only: accepted radius window in mm (released code: 2.0 - 6.0)
+SEED       = 0
+MESHFIX    = True
+RESCALE    = False
+FIT_TARGET = 400
+FIT_BALL   = 2.0
+FIT_RULE   = 'relative'
+FIT_ROI    = (0.10, 0.90)
+FIT_RMIN   = 2.0
 FIT_RMAX   = 60.0
-VIEW       = 'window'        # 'window' = interactive 3D window like fit_sphere.py (close it to continue)
-                             # 'png'    = save and open the 3-view + sections picture;  'both' = both
-SHOW_PNG   = True            # (png mode) open the picture after each skull
-# =====================================================================================================
+VIEW       = 'window'
+SHOW_PNG   = True
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ap = argparse.ArgumentParser()
@@ -58,7 +29,6 @@ ap.add_argument('--overwrite', action='store_true', help='redo skulls whose reme
 ap.add_argument('--no-show', action='store_true')
 a = ap.parse_args()
 
-# results folder: 'results' for the released settings, otherwise named after the band / radius window
 _suffix = ''
 if tuple(round(v, 4) for v in FIT_ROI) != (0.30, 0.70):
     _suffix += f'_roi{round(FIT_ROI[0] * 100):d}-{round(FIT_ROI[1] * 100):d}'
@@ -80,7 +50,6 @@ def current_para(raw_stl):
     return PARA_DEFAULT
 
 def write_params_csv():
-    """remesh_batch.m reads parameters from a CSV: merge the PARA dict (and PARA_DEFAULT) into it."""
     rows = {}
     if os.path.isfile(a.params):
         for r in pd.read_csv(a.params, dtype={'filename': str}).itertuples(): rows[str(r.filename).strip()] = (int(r.para), getattr(r, 'reason', ''))
@@ -92,8 +61,6 @@ def write_params_csv():
     return p
 
 for d in (a.raw, a.out, os.path.join(a.out, '_stl_input')): os.makedirs(d, exist_ok=True)
-# find the MATLAB Remeshing folder: --remeshing-dir, then ./Remeshing, then ~/Documents/MATLAB/Remeshing,
-# then any folder under ~/Documents/MATLAB or ~ that contains both remesh_batch.m and code/
 def find_remeshing_dir(given):
     cands = [given, os.path.join(HERE, 'Remeshing'), os.path.expanduser('~/Documents/MATLAB/Remeshing')]
     for c in cands:
@@ -111,7 +78,6 @@ if found is None:
 a.remeshing_dir = found
 print(f'MATLAB remeshing folder: {a.remeshing_dir}')
 
-# ---- MATLAB: engine if available, else the matlab binary --------------------------------------------------------
 eng = None
 try:
     import matlab.engine
@@ -143,7 +109,6 @@ def remesh(stl_dir):
         if r.returncode != 0: print('MATLAB remeshing failed')
 
 def unfitted_remeshed():
-    """remeshed STLs that have no row in the results folder of these settings yet (e.g. after a failed fitting step)"""
     res = RESULTS; done = set()
     if os.path.exists(os.path.join(res, 'accepted.xlsx')): done |= set(pd.read_excel(os.path.join(res, 'accepted.xlsx')).filename)
     if os.path.exists(os.path.join(res, 'failed.txt')):
@@ -177,7 +142,7 @@ def process_once():
         remesh(stl_dir)
         for n in todo:
             if not os.path.exists(os.path.join(a.out, n)): print(f'{n}: not produced - see {os.path.join(a.out, "remeshing_log.csv")}')
-    pending = unfitted_remeshed()                 # includes skulls remeshed earlier whose fitting did not run
+    pending = unfitted_remeshed()
     if pending:
         print(f'=== fitting {len(pending)} skull(s): {", ".join(pending)} ===')
         run_fitting(len(pending))

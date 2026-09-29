@@ -1,24 +1,3 @@
-# ===================================================================================
-#
-# Batch orbit sphere-fitting for skull meshes.
-#
-# Same fitting algorithm as fit_sphere.py (curvature-based concave seeding,
-# largest-connected-component point selection, robust L-BFGS-B sphere fit).
-# What is added here is the reporting layer that produced results/:
-#
-#   1. Reads several mesh folders instead of one.
-#   2. Writes a three-panel PNG per mesh off-screen instead of blocking on
-#      plotter.show().
-#   3. Records the fit diagnostics (seed attempt, point counts, RMS, side)
-#      alongside the measurements.
-#   4. Logs every rejected seed attempt per failed file to failed_files.txt.
-#
-# Output tree:
-#   output/fit_sphere_batch/measurement_sphere_fitting_ALL.xlsx
-#   output/fit_sphere_batch/failed_files.txt
-#   output/fit_sphere_batch/images/<stem>.png
-#
-# ===================================================================================
 
 import os
 import numpy as np
@@ -28,48 +7,38 @@ import trimesh
 from pathlib import Path
 from scipy.optimize import minimize
 
-# --- project paths: the meshes are read from data/ (see paths.py in the project folder) ---
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths
 
-# --- 1. USER-DEFINED PARAMETERS ---
 
 HERE = Path(__file__).resolve().parent
 
-# Every folder holding meshes. Each is searched for *.stl.
 DIRECTORY_PATHS = [
-    paths.CARDUELINES,      # data/HC_Relatives_watertight
-    paths.HONEYCREEPERS,    # data/Honeycreepers_watertight
-    paths.PEROMYSCUS,       # data/Peromyscus
+    paths.CARDUELINES,
+    paths.HONEYCREEPERS,
+    paths.PEROMYSCUS,
 ]
 
-OUTPUT_DIR = paths.output_dir(__file__)   # output/fit_sphere_batch/
-ENABLE_VISUALIZATION = True          # write the PNGs
-SHOW_INTERACTIVE = False             # True = pop up a window per mesh instead
+OUTPUT_DIR = paths.output_dir(__file__)
+ENABLE_VISUALIZATION = True
+SHOW_INTERACTIVE = False
 
-# --- 2. ALGORITHM THRESHOLDS & SETTINGS ---
 
 CURVATURE_RADIUS = 2.0
 TARGET_POINT_COUNT = 400
 MIN_CONNECTED_POINTS = 20
 
-# Strict anatomical limits for a finch orbit
 MIN_ORBIT_RADIUS = 2.0
 MAX_ORBIT_RADIUS = 6.0
 
-# ROI: ignore the back 30% (braincase) and front 30% (beak)
 ROI_START_PERCENT = 0.30
 ROI_END_PERCENT = 0.70
 
 MAX_SEED_ATTEMPTS = 15
 ROBUST_FIT_OUTLIER_STD = 2.0
 
-# Per-folder overrides, keyed by folder name. Anything not listed here uses
-# the values above. The defaults are tuned to finch skulls, so the mouse
-# meshes get a wider radius window and a smaller curvature neighbourhood.
-# Widen or narrow these once you see what the first run rejects.
 FOLDER_OVERRIDES = {
     "Peromyscus": {
         "MIN_ORBIT_RADIUS": 1.0,
@@ -80,7 +49,6 @@ FOLDER_OVERRIDES = {
 
 
 def params_for(folder_name):
-    """Merge the folder's overrides over the module defaults."""
     p = {k: globals()[k] for k in
          ("CURVATURE_RADIUS", "TARGET_POINT_COUNT", "MIN_CONNECTED_POINTS",
           "MIN_ORBIT_RADIUS", "MAX_ORBIT_RADIUS", "ROI_START_PERCENT",
@@ -88,22 +56,19 @@ def params_for(folder_name):
     p.update(FOLDER_OVERRIDES.get(folder_name, {}))
     return p
 
-# --- 3. FIGURE SETTINGS ---
 
-WINDOW_SIZE = (1800, 650)            # three 600x650 panels
+WINDOW_SIZE = (1800, 650)
 MESH_COLOR = "lightgrey"
 MESH_OPACITY = 0.4
 SPHERE_COLOR = "blue"
 SPHERE_LINE_WIDTH = 2
-POINT_COLOR = "crimson"              # selected inlier points
+POINT_COLOR = "crimson"
 POINT_SIZE = 6
-SEED_COLOR = "lime"                  # seed vertex
+SEED_COLOR = "lime"
 SEED_SIZE = 15
 TITLE_FONT_SIZE = 10
 LABEL_FONT_SIZE = 11
 
-# label, camera direction from the focal point, view-up.
-# +x is the occiput end, so the dorsal panel uses +x as up.
 VIEWS = [
     ("left lateral (from -y)", (0.0, -1.0, 0.0), (0.0, 0.0, 1.0)),
     ("right lateral (from +y)", (0.0, 1.0, 0.0), (0.0, 0.0, 1.0)),
@@ -118,12 +83,8 @@ COLUMNS = [
 ]
 
 
-# ===================================================================================
-# Fitting (unchanged from fit_sphere.py)
-# ===================================================================================
 
 def sphere_loss_function(params, points):
-    """Sum of squared distances from each point to the sphere's surface."""
     center = params[:3]
     radius = params[3]
     if radius <= 0:
@@ -133,7 +94,6 @@ def sphere_loss_function(params, points):
 
 
 def fit_sphere_iteratively(points, max_iterations=3, outlier_std_dev=2.0):
-    """Fit a sphere, drop outliers, refit. Returns (center, radius, inliers)."""
     current_points = points.copy()
     result = None
     for _ in range(max_iterations):
@@ -171,13 +131,9 @@ def rms_residual(points, center, radius):
     return float(np.sqrt(np.mean(resid ** 2)))
 
 
-# ===================================================================================
-# Figure
-# ===================================================================================
 
 def save_figure(mesh, fit_center, fit_radius, picked_points, seed_point,
                 title, out_png):
-    """Three-panel figure: left lateral, right lateral, dorsal."""
     pv_mesh = pv.wrap(mesh)
     focus = np.array(pv_mesh.center)
     dist = float(np.ptp(np.array(pv_mesh.bounds).reshape(3, 2), axis=1).max()) * 2.0
@@ -206,7 +162,7 @@ def save_figure(mesh, fit_center, fit_radius, picked_points, seed_point,
 
         plotter.camera_position = [tuple(focus + np.array(direction) * dist),
                                    tuple(focus), tuple(up)]
-        plotter.reset_camera()        # refit bounds, keeping direction + up
+        plotter.reset_camera()
     if SHOW_INTERACTIVE:
         plotter.show()
     else:
@@ -214,12 +170,8 @@ def save_figure(mesh, fit_center, fit_radius, picked_points, seed_point,
         plotter.close()
 
 
-# ===================================================================================
-# Per-mesh processing
-# ===================================================================================
 
 def process_file(file_path, P):
-    """Returns (row_dict_or_None, attempt_tags, render_args_or_None)."""
     original_mesh = trimesh.load_mesh(file_path)
 
     components = original_mesh.split(only_watertight=False)
@@ -232,7 +184,6 @@ def process_file(file_path, P):
     box_extents = processed_mesh.bounding_box.extents
     verts = processed_mesh.vertices
 
-    # --- ROI: middle band of the skull along x --------------------------
     x_min = processed_mesh.bounds[0, 0]
     x_range = box_extents[0]
     roi_mask = np.logical_and(
@@ -242,12 +193,11 @@ def process_file(file_path, P):
     if not np.any(roi_mask):
         roi_mask = np.ones(len(verts), dtype=bool)
 
-    # --- concave points -------------------------------------------------
     mean_curvatures = trimesh.curvature.discrete_mean_curvature_measure(
         processed_mesh, verts, radius=P["CURVATURE_RADIUS"]
     )
     curvatures_in_roi = mean_curvatures.copy()
-    curvatures_in_roi[~roi_mask] = 1.0          # non-ROI -> not concave
+    curvatures_in_roi[~roi_mask] = 1.0
 
     top_N_seed_indices = np.argsort(curvatures_in_roi)[:P["MAX_SEED_ATTEMPTS"]]
     if curvatures_in_roi[top_N_seed_indices[0]] == 1.0:
@@ -319,10 +269,6 @@ def process_file(file_path, P):
 
 
 def style_header(path):
-    """Bold, thin-bordered, centred header row.
-
-    This was pandas' built-in default header style, dropped in pandas 3.0.
-    """
     from openpyxl import load_workbook
     from openpyxl.styles import Alignment, Border, Font, Side
 
@@ -335,9 +281,6 @@ def style_header(path):
     wb.save(path)
 
 
-# ===================================================================================
-# Main
-# ===================================================================================
 
 if __name__ == "__main__":
     stl_files = []
@@ -358,7 +301,7 @@ if __name__ == "__main__":
     images_dir.mkdir(parents=True, exist_ok=True)
 
     results_list, failed_files_list = [], []
-    per_folder = {}          # folder -> [fitted, failed]
+    per_folder = {}
 
     for i, file_path in enumerate(stl_files, start=1):
         name = os.path.basename(file_path)
@@ -392,7 +335,6 @@ if __name__ == "__main__":
             save_figure(mesh, fit_center, fit_radius, inliers, seed_point,
                         title, images_dir / f"{Path(name).stem}.png")
 
-    # --- save -----------------------------------------------------------
     print("\n--- BATCH COMPLETE ---")
     print(f"--- {len(results_list)} / {len(stl_files)} files fitted. ---")
     for folder, (ok, bad) in per_folder.items():

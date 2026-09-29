@@ -1,96 +1,44 @@
 #!/usr/bin/env python3
-"""
-figure.py - every figure of "Robust parametric estimation of avian
-cranial morphology" (main text Figs 1-14, SI Figs S1-S6), in vector form.
 
-All figures are computed from the meshes. Nothing is read from Dataset.xlsx: the
-bounding boxes, sphere fits, second-orbit fits, topology and (corrected) ellipsoid
-fits are measured from the STL files once, cached in CACHE_DIR, and checked
-against the values printed in the paper before any figure is drawn.
-
-Every figure is written as a PDF with no embedded raster image: 3-D skulls are
-drawn as depth-sorted, shaded vector polygons. The only exception is the
-photograph in Fig 1(a), which is a raster image by nature (see PHOTO_FILE).
-
-HOW TO RUN
-  1. Run it from its folder, 5_figures/. The meshes are read from data/ and everything
-     is written to output/figure/ (see paths.py and SETTINGS below).
-  2. Install the packages once:
-         pip install numpy pandas scipy matplotlib seaborn openpyxl trimesh rtree
-  3. Run:
-         python figure.py            # all figures (PDF)
-         python figure.py --eps      # also Fig1.eps ... Fig14.eps for PLOS
-         python figure.py --only 4,9,S2
-         python figure.py --refit    # re-measure the meshes
-
-OUTPUT (in OUT_DIR, with the file names used in the LaTeX sources)
-  Fig 1  FIG_overview_revised.pdf          Fig 8  FIG_plots_with_data_and_tree_revised3.pdf
-  Fig 2  FIG_bounding.pdf                  Fig 9  FIG_correlation_revised_v4.pdf
-  Fig 3  FIG_orbit_fitting.pdf             Fig 10 FIG_Actual_VS_Model_Curvature_revised3.pdf
-  Fig 4  FIG_sphere_examples.pdf           Fig 11 FIG_normalized_by_genus_v3.pdf
-  Fig 5  FIG_difference_curvature.pdf      Fig 12 FIG_morphospace_2panel_revised_v3.pdf
-  Fig 6  FIG_ellipsoid_fitting.pdf         Fig 13 FIG_generalization.pdf
-  Fig 7  FIG_ellipsoid_examples.pdf        Fig 14 FIG_other_taxa_fits.pdf
-  S1 FIG_SI_remeshing.pdf   S2 FIG_SI_definitions.pdf   S3 FIG_SI_width_location.pdf
-  S4 FIG_SI_sphere_examples.pdf   S5 FIG_SI_ellipsoid_examples.pdf   S6 FIG_SI_other_taxa.pdf
-
-INPUTS NOT PART OF THE MESH DATA
-  Fig 1(a) needs the photograph (PHOTO_FILE), Fig 1(b) the raw scan mesh
-  (RAW_MESH_FILE) and Fig S1 (left column) the meshes of the earlier remeshing
-  (PRIOR_REMESH_FILES). Where a file is missing, the panel is left as a
-  labelled blank and the rest of the figure is drawn normally.
-
-The SI lists Python 3.12, trimesh 4.8.3, NumPy 2.2.6 and SciPy 1.13.1; newer
-releases reproduce the same measurements (the SI reports agreement to 1e-5 mm).
-"""
-
-# --- project paths: the meshes are read from data/ (see paths.py in the project folder) ---
 import os as _os
 import sys as _sys
-_THIS_FILE = globals().get("__file__", _os.path.join(_os.getcwd(), "figure.py"))   # also works in a notebook
+_THIS_FILE = globals().get("__file__", _os.path.join(_os.getcwd(), "figure.py"))
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(_THIS_FILE))))
 import paths
-_OUT = paths.output_dir(_THIS_FILE)          # output/figure/ next to this file
+_OUT = paths.output_dir(_THIS_FILE)
 
-# =============================================================================
-# SETTINGS - edit these for your computer.
-# Relative paths are relative to the folder this script is in.
-# =============================================================================
-FINCH_MESH_DIR = str(paths.FINCHES)     # the 100 finch meshes (data/DF_and_their_relatives)
-HC_DIR = str(paths.HONEYCREEPERS)       # 42 Hawaiian honeycreeper meshes (data/Honeycreepers_watertight)
-CR_DIR = str(paths.CARDUELINES)         # 9 cardueline relative meshes (data/HC_Relatives_watertight)
-PERO_DIR = str(paths.PEROMYSCUS)        # 2 Peromyscus meshes (oriented by principal axes automatically)
-HUMAN_DIR = str(paths.HUMAN)            # 4 human crania (Figs S4 and S6), fitted with HUMAN_FIT
-HUMAN_FIT = dict(ROI_START_PERCENT=0.10, ROI_END_PERCENT=0.50,  # settings of the human fitting script:
-                 MIN_ORBIT_RADIUS=2.0, MAX_ORBIT_RADIUS=60.0,    # search band 10-50% of the length,
-                 CURVATURE_RADIUS=2.0, TARGET_POINT_COUNT=400,   # radius range 2-60 mm
+FINCH_MESH_DIR = str(paths.FINCHES)
+HC_DIR = str(paths.HONEYCREEPERS)
+CR_DIR = str(paths.CARDUELINES)
+PERO_DIR = str(paths.PEROMYSCUS)
+HUMAN_DIR = str(paths.HUMAN)
+HUMAN_FIT = dict(ROI_START_PERCENT=0.10, ROI_END_PERCENT=0.50,
+                 MIN_ORBIT_RADIUS=2.0, MAX_ORBIT_RADIUS=60.0,
+                 CURVATURE_RADIUS=2.0, TARGET_POINT_COUNT=400,
                  MAX_SEED_ATTEMPTS=15)
-OUT_DIR = str(_OUT / "figures")         # all figures are written here (output/figure/figures)
-CACHE_DIR = str(_OUT / "figure_cache")  # measurements from the meshes (built on the first run)
+OUT_DIR = str(_OUT / "figures")
+CACHE_DIR = str(_OUT / "figure_cache")
 
-PHOTO_FILE = str(paths.FIGURE_INPUTS / "photo" / "C.pallidus.png")   # Fig 1(a), the photograph
-PHOTO_CROP = (0.184, 0.193, 0.865, 0.745)             # part of it shown, as fractions (left, top, right, bottom)
-WIRE_RESOLUTION = 30          # lines around the fitted sphere, as in the released scripts
-WIRE_RESOLUTION_BY_FIGURE = {      # fewer lines where the fitted sphere is small on the printed page,
-    "FIG_overview_revised": 16,    # so that the mesh still reads instead of filling in solid
+PHOTO_FILE = str(paths.FIGURE_INPUTS / "photo" / "C.pallidus.png")
+PHOTO_CROP = (0.184, 0.193, 0.865, 0.745)
+WIRE_RESOLUTION = 30
+WIRE_RESOLUTION_BY_FIGURE = {
+    "FIG_overview_revised": 16,
     "FIG_orbit_fitting": 20,
     "FIG_sphere_examples": 16,
     "FIG_difference_curvature": 10,
     "FIG_SI_sphere_examples": 15,
 }
-RAW_MESH_FILE = str(paths.FIGURE_INPUTS / "raw_meshes" / "P2.InornataA.stl")   # Fig 1(b), raw scan mesh
-DISPLAY_MAX_FACES = 200000    # raw or earlier-remeshed meshes above this are merged for display only
-S4_POINT_SCALE = 0            # Fig 14: red dots on the skull views (0 leaves them out; 1 = original size)
-S4_SECTION_POINT_SCALE = 0    # Fig 14: red inlier dots in the section plots below them (0 leaves them out)
-FIG12_LEGEND_FRAME = True     # Fig 12: draw the box around the legend, as published
-FIG12_MARKER_EDGE = False     # Fig 12: black outline around each marker (True restores it)
-BELOW_CRITERIA_STYLE = "filled"   # S4(b), S6, S7: specimens below the quality criteria as "filled", "open" or "hidden"
-PRIOR_REMESH_FILES = {"C.PallidusA": str(paths.FIGURE_INPUTS / "prior_remeshing" / "C.PallidusA.stl"),   # Fig S1, left column
+RAW_MESH_FILE = str(paths.FIGURE_INPUTS / "raw_meshes" / "P2.InornataA.stl")
+DISPLAY_MAX_FACES = 200000
+S4_POINT_SCALE = 0
+S4_SECTION_POINT_SCALE = 0
+FIG12_LEGEND_FRAME = True
+FIG12_MARKER_EDGE = False
+BELOW_CRITERIA_STYLE = "filled"
+PRIOR_REMESH_FILES = {"C.PallidusA": str(paths.FIGURE_INPUTS / "prior_remeshing" / "C.PallidusA.stl"),
                       "C.flaveolaA": str(paths.FIGURE_INPUTS / "prior_remeshing" / "C.flaveolaA.stl")}
 
-# Specimens shown in the render figures (file names without .stl). Figures whose
-# panels name only the species use specimen A (B where the dataset has no A);
-# change the letter here if needed.
 SPECIMENS = {
     "overview": "P2.InornataA",
     "bounding": "G.SeptentrionalistA",
@@ -101,8 +49,8 @@ SPECIMENS = {
     "ellipsoid_steps": "P2.InornataA",
     "ellipsoid_examples": [("C2.FuscaB", "C. fusca"), ("G.ConirostrisF", "G. conirostris"),
                            ("L.noctisE", "L. noctis"), ("T.canoraA", "T. canora")],
-    "honeycreepers": [("L. caeruleirostrisA_p60", "Loxops caeruleirostris"),
-                      ("P. xanthophrysA_p59", "Pseudonestor xanthophrys")],
+    "honeycreepers": [('L. caeruleirostrisA', "Loxops caeruleirostris"),
+                      ('P. xanthophrysA', "Pseudonestor xanthophrys")],
     "remeshing": ["C.PallidusA", "C.flaveolaA"],
     "si_spheres": [("C.ParvulusB", "C. parvulus"), ("C.PsittaculaD", "C. psittacula"), ("G.ConirostrisE", "G. conirostris"),
                    ("G.DifficilisA", "G. difficilis"), ("G.FuliginosaD", "G. fuliginosa"), ("G.ScandensA", "G. scandens"),
@@ -121,7 +69,6 @@ SPECIMENS = {
     "definitions": "G.DifficilisA",
 }
 
-# The fixed random split into 50 training and 50 test specimens used for Eq. (8).
 TRAINING_SET = set("""
 C.PallidusA C.PallidusB C.ParvulusA C.ParvulusE C.PsittaculaA C.PsittaculaB C.PsittaculaC C.PsittaculaD
 C2.FuscaA C2.FuscaB C2.OlivaceaC G.ConirostrisC G.DifficilisA G.FortisB G.FortisC G.FortisD G.FuliginosaA
@@ -131,11 +78,8 @@ C.flaveolaE E.campestrisB L.anoxanthusB L.anoxanthusD L.anoxanthusE L.noctisC L.
 L.violaceaA L.violaceaB L.violaceaD L.violaceaE M.nigraA M.nigraC T.BicolorA T.BicolorC T.BicolorD T.olivaceaB
 """.split())
 
-EQ8 = (0.5653, -0.0013, -0.0004, -0.0153)   # curvature = b0 + b1 x + b2 y + b3 z, as printed in the paper
+EQ8 = (0.5653, -0.0013, -0.0004, -0.0153)
 
-# =============================================================================
-# Imports
-# =============================================================================
 import os
 import re
 import sys
@@ -166,19 +110,18 @@ from matplotlib.collections import PolyCollection, LineCollection
 from matplotlib.lines import Line2D
 from matplotlib.patches import Polygon
 from matplotlib.ticker import FixedLocator, MultipleLocator, FormatStrFormatter
-from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  (registers the 3-D projection)
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 import seaborn as sns
 
 try:
     HERE = os.path.dirname(os.path.abspath(__file__))
-except NameError:  # pasted into a notebook
+except NameError:
     HERE = os.getcwd()
 
-WRITTEN = []  # every file written during this run
+WRITTEN = []
 
 
 def _p(path):
-    """A SETTINGS path, resolved relative to the folder of this script."""
     return path if os.path.isabs(path) else os.path.join(HERE, path)
 
 
@@ -191,12 +134,9 @@ def _folder_name(path):
 
 
 class Skip(Exception):
-    """The inputs for one figure are missing."""
+    pass
 
 
-# =============================================================================
-# 1. ORBIT SPHERE FIT  (from verify_fit.py; same algorithm as fit_sphere.py)
-# =============================================================================
 
 def sphere_loss_function(params, points):
     center = params[:3]
@@ -313,7 +253,6 @@ def run(file_path, ROI_START_PERCENT=0.30, ROI_END_PERCENT=0.70, MIN_ORBIT_RADIU
                    rejected=';'.join(f'{a}:{r}' for a, r in rejected))
         out['_inliers'] = final_points; out['_seed'] = processed_mesh.vertices[seed_index]
         if record_unclipped:
-            # size of the concave component around the same seed without the ROI clipping
             valid_full = initial_mask.copy()
             ve = valid_full[processed_mesh.edges].all(axis=1)
             se = processed_mesh.edges[ve]
@@ -330,9 +269,6 @@ def run(file_path, ROI_START_PERCENT=0.30, ROI_END_PERCENT=0.70, MIN_ORBIT_RADIU
                 rejected=';'.join(f'{a}:{r}' for a, r in rejected))
 
 
-# =============================================================================
-# 2. DRAWING HELPERS  (from ortho_render.py)
-# =============================================================================
 
 def load_big(stl):
     m = trimesh.load_mesh(stl)
@@ -343,10 +279,9 @@ def load_big(stl):
 
 
 def lateral(ax, big, c, R, inl, side, seed=None, alpha=0.55):
-    """Look along -y (side y>0) or +y (side y<0): screen x = anterior-posterior axis, screen y = z."""
     V = big.vertices; F = big.faces
     sgn = 1.0 if side > 0 else -1.0
-    sx = V[:, 0] * sgn  # mirror so that the beak points the same way in both views
+    sx = V[:, 0] * sgn
     sy = V[:, 2]
     depth = V[:, 1] * sgn
     tri_d = depth[F].mean(axis=1)
@@ -355,7 +290,7 @@ def lateral(ax, big, c, R, inl, side, seed=None, alpha=0.55):
     light = np.array([0.35 * sgn, 0.75 * sgn, 0.55]); light /= np.linalg.norm(light)
     sh = 0.55 + 0.45 * np.clip(n @ light, 0, 1)
     polys = np.stack([sx[F], sy[F]], axis=2)[order]
-    if EPS_SAFE:    # EPS has no transparency: the faces turned to the viewer, opaque and lightened (as in draw_mesh)
+    if EPS_SAFE:
         front = (n[:, 1] * sgn > 0)[order]
         grey = _over_white(sh[order][front], 0.75)
         cols = np.c_[np.repeat(grey[:, None], 3, axis=1), np.ones(front.sum())]
@@ -364,8 +299,6 @@ def lateral(ax, big, c, R, inl, side, seed=None, alpha=0.55):
     else:
         cols = np.c_[np.repeat(sh[order][:, None], 3, axis=1), np.full(len(order), alpha)]
         ax.add_collection(PolyCollection(polys, facecolors=cols, edgecolors='none', antialiased=True))
-    # sphere: the projected wireframe of Fig 13(a), seen from the same side as the skull
-    # (rows of B: screen x = x * sgn, screen y = z, towards the viewer = y * sgn)
     B = np.array([[sgn, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, sgn, 0.0]])
     _gallery_sphere(ax, c, R, B, max(np.ptp(sx), np.ptp(sy)))
     if inl is not None and len(inl) and S4_POINT_SCALE:
@@ -378,12 +311,11 @@ def lateral(ax, big, c, R, inl, side, seed=None, alpha=0.55):
 
 
 def section(ax, big, c, R, inl, side, plane='z', halfwidth=0.6, crop=True):
-    """Section of the mesh by the horizontal plane through the sphere centre, with the circle."""
     sgn = 1.0 if side > 0 else -1.0
     if plane == 'z':
         sec = big.section(plane_origin=c, plane_normal=[0, 0, 1])
         idx = (0, 1)
-    else:  # coronal: plane x = cx
+    else:
         sec = big.section(plane_origin=c, plane_normal=[1, 0, 0])
         idx = (1, 2)
     segs = []
@@ -413,9 +345,6 @@ def section(ax, big, c, R, inl, side, plane='z', halfwidth=0.6, crop=True):
     ax.set_aspect('equal'); ax.set_axis_off()
 
 
-# =============================================================================
-# 3. NEUROCRANIUM ELLIPSOID FIT  (released fit_ellipsoid.py with the SI correction)
-# =============================================================================
 
 def axis_aligned_ellipsoid_loss_function(params, points):
     center = params[:3]
@@ -462,7 +391,6 @@ def fit_axis_aligned_ellipsoid_iteratively(points, max_iterations=3, outlier_std
 
 
 def fit_ellipsoid(file_path, POSTERIOR_PERCENTILE=0.40, CURVATURE_RADIUS=3, TARGET_POINT_COUNT=1200):
-    """Axis-aligned ellipsoid on the most convex patch of the rear 40% of the skull."""
     mesh = load_big(file_path)
     lo, hi = mesh.bounds[:, 0]
     posterior_mask = mesh.vertices[:, 0] > hi - (hi - lo) * POSTERIOR_PERCENTILE
@@ -470,7 +398,7 @@ def fit_ellipsoid(file_path, POSTERIOR_PERCENTILE=0.40, CURVATURE_RADIUS=3, TARG
     H[~posterior_mask] = -np.inf
     valid = np.zeros(len(mesh.vertices), dtype=bool)
     valid[np.argsort(H)[::-1][:TARGET_POINT_COUNT]] = True
-    valid &= posterior_mask   # the SI correction: never select vertices outside the region
+    valid &= posterior_mask
     seed = int(np.argmax(H))
     comps = trimesh.graph.connected_components(mesh.edges[valid[mesh.edges].all(axis=1)])
     comp = next((c for c in comps if seed in c), None)
@@ -483,13 +411,8 @@ def fit_ellipsoid(file_path, POSTERIOR_PERCENTILE=0.40, CURVATURE_RADIUS=3, TARG
     return dict(status='ok', center=params[:3], axes=params[3:6], _points=pts, _seed=mesh.vertices[seed])
 
 
-# =============================================================================
-# 4. MESH PREPARATION AND MEASUREMENTS  (cached in CACHE_DIR)
-# =============================================================================
 
 def orient_principal_axes(mesh):
-    """Rotate a mesh into its principal axes (x longest, z shortest), centred on its vertex mean.
-    Signs are fixed by the third moment so the result is reproducible; the rotation is proper."""
     V = mesh.vertices - mesh.vertices.mean(axis=0)
     _, E = np.linalg.eigh(V.T @ V)
     Rm = E[:, [2, 1, 0]].T
@@ -502,7 +425,6 @@ def orient_principal_axes(mesh):
 
 
 def oriented_peromyscus_dir():
-    """Peromyscus meshes oriented as the bird skulls are (written once into the cache)."""
     out = os.path.join(_p(CACHE_DIR), "Peromyscus_oriented")
     os.makedirs(out, exist_ok=True)
     for fp in sorted(glob.glob(os.path.join(_p(PERO_DIR), "*.stl"))):
@@ -544,7 +466,6 @@ def measure_folder(folder, tag, ellipsoid=False):
 
 
 def get_measurements(refit=False):
-    """Measurements of all meshes: finches (with ellipsoids) and the other taxa."""
     os.makedirs(_p(CACHE_DIR), exist_ok=True)
     finch_csv = os.path.join(_p(CACHE_DIR), "measurements_finches.csv")
     other_csv = os.path.join(_p(CACHE_DIR), "measurements_other_taxa.csv")
@@ -572,7 +493,6 @@ def meets_criteria(n_inliers, fit_err_pct):
 
 
 def dataset_table(finch):
-    """The finch table that Figs 8-12 use (the same columns as Dataset.xlsx)."""
     d = finch.copy()
     d["stem"] = d.filename.str.replace(".stl", "", regex=False)
     d["species"] = d.stem.str.replace(r"[A-G]$", "", regex=True)
@@ -593,11 +513,9 @@ def dataset_table(finch):
 
 
 def check_against_paper(finch, other, d):
-    """Recompute the numbers printed in the paper from the measurements."""
     rows = []
 
     def add(what, value, paper, fmt="{:.3f}"):
-        # a value reproduces the paper if it prints the same at the paper's precision
         v, p = fmt.format(value), fmt.format(paper)
         rows.append((what, v, p, "ok" if v == p else "DIFFERS"))
 
@@ -634,12 +552,6 @@ def check_against_paper(finch, other, d):
           ("" if n_diff == 0 else "  (check the input meshes)"))
 
 
-# =============================================================================
-# 5a. PUBLISHED FIGURE LAYOUTS
-# =============================================================================
-# Layouts measured from the figure files of the paper: page size and the box that each
-# rendered skull occupies, in points from the top-left corner of the page, plus the
-# position (x, baseline) and size of every label and title.
 LAYOUT = {
  "FIG_overview_revised": {
   "page": (
@@ -1455,11 +1367,7 @@ LAYOUT = {
 }
 
 
-# Camera angles (azimuth, elevation, roll, in degrees) recovered by matching the projected
-# silhouette of each rendered panel of the published figures; `view()` turns them into a camera.
-# Fig 2: camera distance (mm) of the panels drawn in perspective, None where orthographic.
 BOUNDING_PERSPECTIVE = (60.0, None, 60.0, None)
-# Fig 1(d) is drawn in perspective as well, at the same camera distance.
 OVERVIEW_PERSPECTIVE = 60.0
 
 CAMERAS = {
@@ -1486,32 +1394,27 @@ CAMERAS = {
 }
 
 
-# =============================================================================
-# 5. VECTOR 3-D RENDERING  (every triangle is a filled polygon; no screenshots)
-# =============================================================================
 from matplotlib.patches import Rectangle
 
-MESH_RGB = np.array([0.80, 0.80, 0.80])      # PyVista 'lightgrey'
+MESH_RGB = np.array([0.80, 0.80, 0.80])
 SPHERE_BLUE = "#0000ff"
-INLIER_RED = "#dc143c"                       # PyVista 'crimson'
-SEED_GREEN = "#00ff00"                       # PyVista 'lime', as in the released fitting scripts
-AXIS_COLORS = ("#ff0000", "#008000", "#0000ff")          # PyVista 'red', 'green', 'blue'
+INLIER_RED = "#dc143c"
+SEED_GREEN = "#00ff00"
+AXIS_COLORS = ("#ff0000", "#008000", "#0000ff")
 RENDER_RC = {"font.family": "serif",
              "font.serif": ["Liberation Serif", "Times New Roman", "Times", "Nimbus Roman", "DejaVu Serif"],
              "mathtext.fontset": "stix", "pdf.fonttype": 42, "ps.fonttype": 42, "axes.unicode_minus": False}
 
 
 def eye_from(azim_deg, elev_deg):
-    """Direction towards the viewer: azimuth 0 = from +x (posterior), 90 = from +y; elevation above the xy plane."""
     a, e = np.radians(azim_deg), np.radians(elev_deg)
     return np.array([np.cos(e) * np.cos(a), np.cos(e) * np.sin(a), np.sin(e)])
 
 
-FINCH_EYE = eye_from(-75, 18)   # left side, slightly from behind and above: beak to the left, skull upright
+FINCH_EYE = eye_from(-75, 18)
 
 
 def view(angles):
-    """Camera from (azimuth, elevation, roll) in degrees, as recovered from the published panels."""
     a, e, r = np.radians(angles)
     eye = np.array([np.cos(e) * np.cos(a), np.cos(e) * np.sin(a), np.sin(e)])
     up = np.array([0.0, 1.0, 0.0]) if abs(eye[2]) > 0.99 else np.array([0.0, 0.0, 1.0])
@@ -1521,17 +1424,15 @@ def view(angles):
 
 
 def camera(eye, up=(0.0, 0.0, 1.0)):
-    """Orthographic camera; rows are screen-right, screen-up and towards-the-viewer."""
     zc = np.asarray(eye, float); zc = zc / np.linalg.norm(zc)
     xc = np.cross(up, zc); xc = xc / np.linalg.norm(xc)
     return np.vstack([xc, np.cross(zc, xc), zc])
 
 
-PERSPECTIVE = None          # (camera distance, centre) while a panel is drawn in perspective
+PERSPECTIVE = None
 
 
 def set_perspective(distance=None, centre=None):
-    """Draw in perspective from `distance` (mm) in front of `centre`; None restores orthographic."""
     global PERSPECTIVE
     PERSPECTIVE = None if distance is None else (float(distance), np.zeros(3) if centre is None else np.asarray(centre, float))
 
@@ -1552,9 +1453,6 @@ def _over_white(rgb, alpha):
 
 def draw_mesh(ax, mesh, B, alpha=0.40, rgb=MESH_RGB, ambient=0.42, edge=None, edge_lw=0.1, cull=False,
               zorder=1, light=(-0.35, 0.45, 1.0), seam_lw=0.3, depth_grey=None):
-    """Flat-shaded triangles sorted back to front. alpha < 1 gives the translucent look of the
-    original renders; alpha = 1 with cull=True gives an opaque surface. EPS has no transparency,
-    so in the EPS pass a translucent mesh is drawn as an opaque, lightened surface."""
     translucent = alpha < 1
     if EPS_SAFE and translucent:
         cull, rgb, alpha = True, _over_white(rgb, 0.75), 1.0
@@ -1568,14 +1466,14 @@ def draw_mesh(ax, mesh, B, alpha=0.40, rgb=MESH_RGB, ambient=0.42, edge=None, ed
     shade = ambient + (1 - ambient) * lam
     order = np.argsort(depth[F].mean(axis=1))
     face = np.c_[np.clip(shade[order, None] * np.asarray(rgb)[None, :], 0, 1), np.full(len(order), alpha)]
-    if depth_grey is not None:      # grey by distance from the viewer: near dark, far light
+    if depth_grey is not None:
         dz = depth[F].mean(axis=1)[order]
         g = depth_grey[1] - (depth_grey[1] - depth_grey[0]) * (dz - dz.min()) / max(np.ptp(dz), 1e-12)
         face = np.c_[g, g, g, np.ones(len(g))]
     if edge is not None:
         ec, lw = edge, edge_lw
     elif alpha >= 1:
-        ec, lw = face, seam_lw      # same-colour edges close the hairline seams between opaque faces
+        ec, lw = face, seam_lw
     else:
         ec, lw = "none", 0
     ax.add_collection(PolyCollection(V2[F][order], facecolors=face, edgecolors=ec, linewidths=lw, zorder=zorder))
@@ -1583,7 +1481,6 @@ def draw_mesh(ax, mesh, B, alpha=0.40, rgb=MESH_RGB, ambient=0.42, edge=None, ed
 
 
 def _uv_sphere(n_theta=30, n_phi=30):
-    """Unit sphere laid out like pyvista.Sphere(theta_resolution=30, phi_resolution=30): vertices and triangle edges."""
     th = np.linspace(0, 2 * np.pi, n_theta, endpoint=False)
     ph = np.linspace(0, np.pi, n_phi)[1:-1]
     V = np.array([[np.sin(p) * np.cos(t), np.sin(p) * np.sin(t), np.cos(p)] for p in ph for t in th])
@@ -1605,7 +1502,6 @@ _UV_CACHE = {}
 
 
 def uv_sphere(n=None):
-    """Wireframe sphere with `n` lines each way; 30 is what the released scripts use."""
     n = int(n or WIRE_RESOLUTION)
     if n not in _UV_CACHE:
         _UV_CACHE[n] = _uv_sphere(n, n)
@@ -1614,8 +1510,6 @@ def uv_sphere(n=None):
 
 def draw_wire_ellipsoid(ax, center, axes, B, color=SPHERE_BLUE, lw=0.3, back_alpha=0.45, zorder=5, back_color=None,
                         back_lw=None, wire_n=None):
-    """Wireframe sphere (axes r, r, r) or axis-aligned ellipsoid; edges on the far half are lighter
-    (or drawn in back_color / back_lw when these are given)."""
     V, E = uv_sphere(wire_n)
     S, depth = to_screen(np.asarray(center) + V * np.asarray(axes, float), B)
     front = depth[E].mean(axis=1) >= to_screen(center, B)[1][0]
@@ -1639,7 +1533,6 @@ def draw_segments(ax, segments, B, color, lw=1.0, zorder=6):
 
 
 def box_edges(corners):
-    """The 12 edges of a box whose 8 corners are ordered like itertools.product([-1, 1], repeat=3)."""
     return [(corners[i], corners[j]) for i in range(8) for j in range(i + 1, 8) if bin(i ^ j).count("1") == 1]
 
 
@@ -1649,7 +1542,6 @@ def aabb_corners(mesh):
 
 
 def frame(ax, pts, pad=0.03, aspect=None):
-    """Equal-aspect limits that fit the projected points (optionally to a given box aspect w/h)."""
     lo, hi = pts.min(axis=0), pts.max(axis=0)
     cx, cy = (lo + hi) / 2
     w, h = (hi - lo) * (1 + 2 * pad)
@@ -1714,10 +1606,6 @@ def any_mesh(path):
 
 
 def display_mesh(path, max_faces=None):
-    """Load a mesh that is only drawn, never measured (the raw scan of Fig 1(b) and the earlier
-    remeshing of Fig S1). Raw scans can carry hundreds of thousands of faces, every one of which
-    becomes a polygon in the vector file, so above max_faces the vertices are merged on a grid
-    fine enough to leave the printed panel unchanged."""
     m = any_mesh(path)
     limit = DISPLAY_MAX_FACES if max_faces is None else max_faces
     if not limit or len(m.faces) <= limit:
@@ -1776,34 +1664,21 @@ def render_ellipsoid_fit(ax, path, eye=None, up=(0, 0, 1), ellipsoid=True, point
 
 
 def posterior_points(m, B, V2, frac):
-    """Projected vertices behind the given fraction of the skull length (crops away the beak)."""
     lo, hi = m.bounds[:, 0]
     return V2[m.vertices[:, 0] > lo + frac * (hi - lo)]
 
 
-# =============================================================================
-# 6. RENDER FIGURES  (page size, panel boxes, fonts and text positions of the published files)
-# =============================================================================
-# Times New Roman (the composites) and TeX Gyre Termes (Fig 13) are metric-compatible, so the
-# text lands identically. TrueType clones are preferred here because embedding an OpenType face
-# makes some PDF readers report a font-type mismatch.
 COMPOSITE_RC = {"font.family": "serif",
                 "font.serif": ["Times New Roman", "Liberation Serif", "Nimbus Roman", "Times",
                                "TeX Gyre Termes", "DejaVu Serif"],
                 "mathtext.fontset": "stix", "pdf.fonttype": 42, "ps.fonttype": 42, "axes.unicode_minus": False}
 
 
-# Points per pixel of the PyVista screenshots in each published figure (the width of the placed
-# image in points divided by its width in pixels). It converts the sizes set in the released
-# scripts -- wireframe 2 px, axis lines 5 px, crimson points 6 px, lime seed 15 px -- into points.
 PX = {"FIG_overview_revised": 0.47, "FIG_bounding": 0.88, "FIG_orbit_fitting": 0.75,
       "FIG_sphere_examples": 0.89, "FIG_difference_curvature": 1.21, "FIG_ellipsoid_fitting": 0.85,
       "FIG_ellipsoid_examples": 1.08, "FIG_SI_remeshing": 0.42, "FIG_SI_sphere_examples": 0.86,
       "FIG_SI_ellipsoid_examples": 0.90}
-OPAQUE = dict(cull=True, rgb=np.array([0.83] * 3), ambient=0.30)      # PyVista 'lightgrey' surface
-# The screenshots behind the published panels were taken at different window scales, so those
-# pixel sizes land differently in each figure. These factors were measured by comparing the ink
-# coverage of each published panel with this renderer: (line width, marker area).
+OPAQUE = dict(cull=True, rgb=np.array([0.83] * 3), ambient=0.30)
 CAL = {"FIG_overview_revised": (1.00, 1.00), "FIG_bounding": (1.44, 1.00), "FIG_orbit_fitting": (0.93, 0.87),
        "FIG_sphere_examples": (1.70, 2.27), "FIG_difference_curvature": (1.00, 0.50),
        "FIG_ellipsoid_fitting": (1.07, 0.66), "FIG_ellipsoid_examples": (1.98, 2.18),
@@ -1812,37 +1687,32 @@ CAL = {"FIG_overview_revised": (1.00, 1.00), "FIG_bounding": (1.44, 1.00), "FIG_
 
 
 def pv_sizes(name, kind="sphere"):
-    """Line widths and marker sizes of the released fitting scripts, in points for this page."""
     p = PX[name]; f_line, f_area = CAL[name]
     style = dict(wire_lw=2 * p * f_line, point_s=(6 * p) ** 2 * f_area, seed_s=(15 * p) ** 2 * f_area,
                  back_alpha=1.0, seed_edge=None, wire_n=WIRE_RESOLUTION_BY_FIGURE.get(name))
     if kind == "ellipsoid":
-        style.update(axis_lw=5 * p, alpha=0.30)          # fit_ellipsoid.py: opacity 0.3, axis lines 5 px
+        style.update(axis_lw=5 * p, alpha=0.30)
     return style
 
 
 def page_figure(page):
-    """A figure whose page is exactly `page` = (width, height) in points."""
     fig = plt.figure(figsize=(page[0] / 72.0, page[1] / 72.0))
     fig.page = tuple(page)
     return fig
 
 
 def page_axes(fig, box, pad=0.0):
-    """Axes over a box (x0, y0, x1, y1) given in points from the top-left corner of the page."""
     W, H = fig.page
     x0, y0, x1, y1 = box[0] - pad, box[1] - pad, box[2] + pad, box[3] + pad
     return fig.add_axes([x0 / W, 1 - y1 / H, (x1 - x0) / W, (y1 - y0) / H])
 
 
 def page_text(fig, x, y, text, size, ha="left", **kw):
-    """Text whose baseline starts (ha='left') or is centred (ha='center') at page point (x, y)."""
     W, H = fig.page
     return fig.text(x / W, 1 - y / H, text, fontsize=size, ha=ha, va="baseline", **kw)
 
 
 def page_overlay(fig):
-    """Transparent axes over the whole page in page points (y downwards), for arrows and frames."""
     W, H = fig.page
     ax = fig.add_axes([0, 0, 1, 1], zorder=20)
     ax.set_xlim(0, W); ax.set_ylim(H, 0); ax.set_axis_off()
@@ -1850,7 +1720,6 @@ def page_overlay(fig):
 
 
 def fit_box(ax, pts):
-    """Uniform scale and centring so that the projected points exactly fill the axes box."""
     lo, hi = np.min(pts, axis=0), np.max(pts, axis=0)
     bb = ax.get_position(); fw, fh = ax.figure.get_size_inches()
     bw, bh = bb.width * fw, bb.height * fh
@@ -1861,7 +1730,6 @@ def fit_box(ax, pts):
 
 
 def pin(ax, data_pt, page_pt, scale):
-    """Limits that draw data_pt at page point page_pt with `scale` points per data unit (mm)."""
     bb = ax.get_position(); W, H = ax.figure.page
     X0, X1, Y0, Y1 = bb.x0 * W, bb.x1 * W, (1 - bb.y1) * H, (1 - bb.y0) * H
     ax.set_xlim(data_pt[0] + (X0 - page_pt[0]) / scale, data_pt[0] + (X1 - page_pt[0]) / scale)
@@ -1910,7 +1778,7 @@ def fig01_overview():
     fit_box(ax["c"], draw_mesh(ax["c"], m, view(cams["c"]), alpha=1.0, seam_lw=0.3 * k, **OPAQUE))
     set_perspective(OVERVIEW_PERSPECTIVE, m.vertices.mean(axis=0))
     Bd = view(cams["d"]); corners = aabb_corners(m)
-    V2 = draw_mesh(ax["d"], m, Bd, alpha=0.40)                        # bounding_AABB.py: opacity 0.4
+    V2 = draw_mesh(ax["d"], m, Bd, alpha=0.40)
     draw_segments(ax["d"], box_edges(corners), Bd, "#ff0000", lw=2 * p)
     fit_box(ax["d"], np.vstack([V2, to_screen(corners, Bd)[0]]))
     set_perspective(None)
@@ -1931,17 +1799,17 @@ def fig02_bounding():
     T, ext = np.asarray(obb.primitive.transform), np.asarray(obb.primitive.extents)
     obb_corners = (np.array(list(itertools.product((-0.5, 0.5), repeat=3))) * ext) @ T[:3, :3].T + T[:3, 3]
     fig = page_figure(lay["page"])
-    up_axis = int(np.argmax(np.abs(T[2, :3])))         # the box axis closest to the vertical
+    up_axis = int(np.argmax(np.abs(T[2, :3])))
     side_axis = int(np.argmax([abs(T[1, j]) if j != up_axis else -1 for j in range(3)]))
-    tilt = np.radians(4.5)                             # the right-hand panels look along the box itself,
+    tilt = np.radians(4.5)
     obb_B = camera(T[:3, up_axis] * np.cos(tilt) + T[:3, 3 - up_axis - side_axis] * np.sin(tilt),
-                   T[:3, side_axis])                   # so the box is square on and the skull sits askew
-    for i, box in enumerate(lay["panels"]):                                     # (a) OBB row, (b) AABB row
+                   T[:3, side_axis])
+    for i, box in enumerate(lay["panels"]):
         corners, color = (obb_corners, "#008000") if i < 2 else (aabb_corners(m), "#ff0000")
         ax = page_axes(fig, box)
         set_perspective(BOUNDING_PERSPECTIVE[i], m.vertices.mean(axis=0))
         B = obb_B if i == 1 else view(CAMERAS["FIG_bounding"][i])
-        V2 = draw_mesh(ax, m, B, alpha=0.6 if i < 2 else 0.4)     # bounding_OBB.py / bounding_AABB.py
+        V2 = draw_mesh(ax, m, B, alpha=0.6 if i < 2 else 0.4)
         draw_segments(ax, box_edges(corners), B, color, lw=2 * p * (1.44 if i < 2 else 1.98))
         fit_box(ax, np.vstack([V2, to_screen(corners, B)[0]]))
         set_perspective(None)
@@ -1962,7 +1830,7 @@ def fig03_orbit_fitting():
         ax = page_axes(fig, box)
         _, r, B, V2, S = render_sphere_fit(ax, path, B=view(CAMERAS["FIG_orbit_fitting"][i]), **opts)
         fit_box(ax, np.vstack([V2, S]))
-        if i in (1, 2):                           # seed: the dark-green dot of the published figure
+        if i in (1, 2):
             draw_points(ax, r["_seed"], B, color="#006e00", s=64.6 ** 2, zorder=9)
     ov = page_overlay(fig)
     for start, tip in (((1380.6, 353.5), (1680.3, 353.5)), ((1672.6, 630.8), (1337.4, 840.4)),
@@ -1973,7 +1841,6 @@ def fig03_orbit_fitting():
 
 
 def _cells_figure(key, kind, stem_out, crop=None):
-    """A grid of fits with italic species titles, laid out as the published file `stem_out`."""
     lay = LAYOUT[stem_out]
     fig = page_figure(lay["page"]); cells = list(lay["cells"].values())
     opts = pv_sizes(stem_out, kind)
@@ -1999,7 +1866,7 @@ def fig05_difference_curvature():
         ax = page_axes(fig, box)
         _, _, _, V2, S = render_sphere_fit(ax, finch_path(stem), seed=False,
                                            B=view(CAMERAS["FIG_difference_curvature"][i]), **style)
-        fit_box(ax, np.vstack([V2, S]))          # the published panels show the whole skull
+        fit_box(ax, np.vstack([V2, S]))
     draw_labels(fig, lay)
     save(fig, "FIG_difference_curvature")
 
@@ -2021,12 +1888,12 @@ def fig07_ellipsoid_examples():
     _cells_figure("ellipsoid_examples", "ellipsoid", "FIG_ellipsoid_examples")
 
 
-def fig13_honeycreeper_examples():          # the two-skull Fig 13 of the first revision (not used)
+def fig13_honeycreeper_examples():
     lay = LAYOUT["FIG_SI_more_mammal_examples_rowscale"]
-    shift = (24.0, 48.5)        # the caption carries the species and the numbers, so the headers go and
-    fig = page_figure((lay["page"][0], lay["page"][1] - shift[1]))      # each row moves up by that much
+    shift = (24.0, 48.5)
+    fig = page_figure((lay["page"][0], lay["page"][1] - shift[1]))
     ov = page_overlay(fig)
-    scales = (32.1 / 5.0, 26.0 / 5.0)          # points per mm in rows (a) and (b): the published 5 mm bars
+    scales = (32.1 / 5.0, 26.0 / 5.0)
     views = [((0.75, 0.62, 0.55), (0, 0, 1)), ((0, 1, 0), (0, 0, 1)), ((0, 0, 1), (-1, 0, 0))]
     view_labels = [("oblique (behind, right, above)", (92.05, 193.2), (91.65, 415.8)),
                    ("right lateral (from $+y$)", (257.75, 179.3), (257.0, 408.3)),
@@ -2040,7 +1907,7 @@ def fig13_honeycreeper_examples():          # the two-skull Fig 13 of the first 
         c, R = np.array([r["cx"], r["cy"], r["cz"]]), r["sphere_radius"]
         dy = shift[row]
         page_text(fig, headers[row][0], headers[row][1], f"({'ab'[row]})", 9, fontweight="bold",
-                  family="sans-serif")            # the panel letters of the other SI figures
+                  family="sans-serif")
         for v, ((eye, up), (label, *label_xy)) in enumerate(zip(views, view_labels)):
             box = lay["panels"][3 * row + v]
             box = (box[0], box[1] - dy, box[2], box[3] - dy)
@@ -2058,7 +1925,7 @@ def fig13_honeycreeper_examples():          # the two-skull Fig 13 of the first 
         ov.plot([x0, x0 + 5.0 * scales[row]], [y - dy, y - dy], color="k", lw=1.1, solid_capstyle="butt")
         page_text(fig, tx, ty - dy, "5 mm", 6.5, ha="center")
         if row == 0:
-            page_text(fig, 38.0, 68.5 - dy - 18, "missing dorsal vault", 6.5)      # up into the free space
+            page_text(fig, 38.0, 68.5 - dy - 18, "missing dorsal vault", 6.5)
             page_text(fig, 38.0, 75.7 - dy - 18, "(surface closed by hole filling)", 6.5)
             ov.annotate("", xy=(111.3, 122.6 - dy), xytext=(84.6, 80.8 - dy - 18),
                         arrowprops=dict(arrowstyle="-|>", lw=0.8, color="k", mutation_scale=6.5, shrinkA=0, shrinkB=0))
@@ -2122,7 +1989,6 @@ def figS8_definitions():
     blue, red, orange, grey = "#1f3fbf", "#d40000", "#ff7f0e", (0.5, 0.5, 0.5)
     fig = page_figure((532.8, 266.4)); ov = page_overlay(fig)
     t = np.linspace(0, 2 * np.pi, 400)
-    # (a) section by the horizontal plane through the sphere centre, with the magnified inset
     sec = m.section(plane_origin=c, plane_normal=[0, 0, 1])
     segs = [sec.vertices[e.points][:, :2] for e in sec.entities] if sec is not None else []
     near = inl[np.abs(inl[:, 2] - c[2]) < 0.6]
@@ -2136,7 +2002,7 @@ def figS8_definitions():
         ax.scatter(near[:, 0], near[:, 1], s=9, c=red, lw=0, zorder=5)
 
     scale_a, centre_a = 15.34, (133.2, 109.2)
-    axa = page_axes(fig, (24.2, 10.5, 242.2, 178.0))     # the section is cut off as in the published file
+    axa = page_axes(fig, (24.2, 10.5, 242.2, 178.0))
     draw_section(axa, 1.6, 1.4)
     axa.plot([c[0]], [c[1]], "+", color=blue, ms=8, mew=1.2)
     ang = np.radians(-28.7)
@@ -2145,7 +2011,7 @@ def figS8_definitions():
     page_text(fig, 161.9, 126.8, "$\\hat{r}$", 9, color=blue)
     zoom, inset = (114.0, 54.5, 127.8, 68.3), (159.3, 14.7, 234.2, 89.6)
     ins = page_axes(fig, inset)
-    ins.set_xticks([]); ins.set_yticks([]); ins.set_facecolor("white")   # hides the main panel beneath
+    ins.set_xticks([]); ins.set_yticks([]); ins.set_facecolor("white")
     for spine in ins.spines.values():
         spine.set_visible(False)
     draw_section(ins, 2.6, 1.2)
@@ -2161,17 +2027,15 @@ def figS8_definitions():
     page_text(fig, 132.8, 252.7, "fit error $=\\sqrt{\\mathrm{mean}(e_i^2)}\\,/\\,\\hat{r}$" +
               f" = {r['fit_err_pct']:.1f}% on this skull ({r['n_inliers']} inliers)", 7, ha="center")
     page_text(fig, 24.3, 17.5, "(a)", 9, fontweight="bold")
-    # (b) dorsal view with both orbits, anterior to the left
     scale_b, centre_b = 7.77, (374.35, 140.95)
     axb = page_axes(fig, (262.0, 30.0, 532.8, 225.0))
     B = camera((0, 0, 1), (0, 1, 0))
     draw_mesh(axb, m, B, alpha=1.0, cull=True, rgb=np.array([0.99] * 3), ambient=0.62, seam_lw=0)
-    # seam_lw=0: the triangulation shows as fine light seams, as in the published panel
     for cc, rr, col in ((c, R, blue), (c2, R2, red)):
         axb.plot(cc[0] + rr * np.cos(t), cc[1] + rr * np.sin(t), color=col, lw=1.4, zorder=6)
         axb.plot([cc[0]], [cc[1]], "+", color=col, ms=7, mew=1.1, zorder=6)
     pin(axb, c[:2], centre_b, scale_b)
-    y_mid = centre_b[1] + c[1] * scale_b                     # page position of the midline y = 0
+    y_mid = centre_b[1] + c[1] * scale_b
     ov.plot([266.4, 527.5], [y_mid, y_mid], "--", color="k", lw=0.7)
     for x, y, text in ((488.7, y_mid - 2.4, "midline"), (488.7, y_mid + 4.3, "$y$ = 0"),
                        (274.6, 163.1, "half searched by"), (274.6, 169.9, "the pipeline (y < 0)"),
@@ -2186,65 +2050,40 @@ def figS8_definitions():
     save(fig, "FIG_SI_definitions")
 
 
-# =============================================================================
-# 7. FIGS 8-12  (from figure.py)
-# =============================================================================
 
-# PostScript has no alpha channel: matplotlib's EPS backend renders partially
-# transparent artists fully opaque rather than rasterising.  To keep EPS both
-# vector AND visually faithful, alpha is pre-composited onto white when
-# EPS_SAFE is on.  Set by --eps; the PDF pass keeps real transparency.
 EPS_SAFE = False
 
 
 def blend(c, a):
-    """Colour c at opacity a over a white page, as an opaque colour."""
     from matplotlib.colors import to_rgb
     return tuple(1.0 - (1.0 - v) * a for v in to_rgb(c))
 
 
 def A(c, a):
-    """-> dict(color=..., alpha=...) honouring the current output mode."""
     return {"color": blend(c, a), "alpha": 1.0} if EPS_SAFE else {"color": c, "alpha": a}
 
 
-# ---------------------------------------------------------------------------
-# Style measured from the v2/v3 figures of the current submission.
-# Every original uses Times New Roman; Liberation Serif is metric-compatible
-# and is what is used here.  Figure sizes and point sizes below are the
-# measured values of the originals, so each output PDF has the same page
-# geometry and the same rendered text size as the figure it replaces.
-# ---------------------------------------------------------------------------
-# Applied only while Figs 8-12 are drawn, so Fig S4 keeps matplotlib's default style.
 FIG_RC = {
     "font.family": "serif",
     "font.serif": ["Liberation Serif", "Times New Roman", "Nimbus Roman",
                    "DejaVu Serif"],
-    "mathtext.fontset": "stix",          # Times-like maths
+    "mathtext.fontset": "stix",
     "mathtext.default": "it",
     "axes.unicode_minus": False,
-    "pdf.fonttype": 42,                  # keep text as text
-    "savefig.bbox": None,       # exact page size = figsize
+    "pdf.fonttype": 42,
+    "savefig.bbox": None,
 }
 
-# figure size (inches) and point sizes, measured from the originals
 SPEC = {
-    #                      figsize            tick  label  title  tag   legend
     "fig08": dict(figsize=(13.28,  6.50), tick=21.5, label=28.0,               legend=21.5, genus=24.0),
     "fig09": dict(figsize=(51.97, 38.03), tick=80.0, label=85.0, title=93.5,                 marker=400),
     "fig10": dict(figsize=(44.79, 36.46), tick=72.0, label=83.6, title=96.0, tag=113.2, cbar=70.2, marker=425),
-    # legend_ms: legend keys are drawn larger than the plotted points in the
-    # originals (2.5x in Fig 12, 1.3x in Fig 11) -- measured, not derived.
     "fig11": dict(figsize=( 8.44,  3.49), tick=15.8, label=17.3,               legend=12.8, marker=32, legend_ms=6.5),
     "fig12": dict(figsize=(22.83, 12.60), tick=37.8, label=50.8, tag=52.5,     legend=44.3, marker=72, legend_ms=20.6),
 }
 
-# --------------------------------------------------------------------------
-# Load and derive
-# --------------------------------------------------------------------------
 
 SPECIES_TO_GENUS = {
-    # Darwin's finches
     "C.Pallidus": "Camarhynchus", "C.Parvulus": "Camarhynchus",
     "C.Psittacula": "Camarhynchus",
     "C2.Fusca": "Certhidea", "C2.Olivacea": "Certhidea",
@@ -2254,12 +2093,11 @@ SPECIES_TO_GENUS = {
     "G.Septentrionalist": "Geospiza",
     "P.Crassirostris": "Platyspiza",
     "P2.Inornata": "Pinaroloxias",
-    # relatives
     "C.flaveola": "Coereba",
     "E.campestris": "Euneornis",
     "L.noctis": "Loxigilla", "L.portoricensis": "Loxigilla",
     "L.violacea": "Loxigilla",
-    "L.anoxanthus": "Loxipasser",          # IOC v4.4 -- NOT Loxigilla
+    "L.anoxanthus": "Loxipasser",
     "M.nigra": "Melopyrrha",
     "T.Bicolor": "Tiaris", "T.canora": "Tiaris", "T.olivacea": "Tiaris",
 }
@@ -2268,16 +2106,6 @@ DF_GENERA = ["Camarhynchus", "Certhidea", "Geospiza", "Pinaroloxias", "Platyspiz
 RE_GENERA = ["Coereba", "Euneornis", "Loxigilla", "Loxipasser", "Melopyrrha", "Tiaris"]
 
 
-# --------------------------------------------------------------------------
-# Fig 8 -- orbit curvature by genus, with the consensus tree underneath
-# --------------------------------------------------------------------------
-# Topology. Nested tuples; leaves are genus names. Left block = Darwin's
-# finches, right block = relatives.
-#
-# >>> The placement of Loxipasser is the ONE editorial decision here. <<<
-# It is drawn as sister to Loxigilla, which mirrors its former treatment
-# inside Loxigilla. If you prefer the Burns et al. (2014) position, move the
-# label in RELATIVE_TREE and the leaf order in ORDER together.
 
 FINCH_TREE = (("Camarhynchus", "Geospiza"),
               ("Platyspiza", ("Certhidea", "Pinaroloxias")))
@@ -2292,7 +2120,6 @@ BLUE, ORANGE = "#3B8DBE", "#E0761F"
 
 
 def _draw(node, xpos, ax, depth_of):
-    """Recursively draw square brackets; returns (x centre, y of the join)."""
     if isinstance(node, str):
         return xpos[node], 0.0
     kids = [_draw(c, xpos, ax, depth_of) for c in node]
@@ -2306,12 +2133,8 @@ def _draw(node, xpos, ax, depth_of):
 
 
 def fig08(d):
-    """Vertical bands (fractions of figure height) measured from the v2
-    figure: plot axes 0.012-0.606, genus labels 0.550-0.833, tree
-    0.854-0.979.  Laid out with explicit add_axes so the three bands land
-    exactly where they do in the original."""
     S = SPEC["fig08"]
-    L, Wd = 0.083, 0.910                       # axes left / width, from v2
+    L, Wd = 0.083, 0.910
     fig = plt.figure(figsize=S["figsize"])
     ax = fig.add_axes([L, 1 - 0.606, Wd, 0.606 - 0.012])
     lab_ax = fig.add_axes([L, 1 - 0.833, Wd, 0.833 - 0.550]); lab_ax.axis("off")
@@ -2353,8 +2176,6 @@ def fig08(d):
 
     lab_ax.set_xlim(*XLIM); lab_ax.set_ylim(0, 1)
     for i, g in enumerate(ORDER):
-        # CHANGED: labels anchored at the bottom of their band (figure.py had y=1.0, va="top").
-        # This is how the published Fig 8 looks; anchored at the top they run into low data points.
         lab_ax.text(i, 0.0, g, rotation=90, ha="center", va="bottom",
                     fontsize=S["genus"],
                     color=BLUE if g in DF_GENERA else ORANGE)
@@ -2367,9 +2188,6 @@ def fig08(d):
     plt.close(fig)
 
 
-# --------------------------------------------------------------------------
-# Fig 9 -- curvature vs the three dimensions, three groups
-# --------------------------------------------------------------------------
 
 def fig09(d):
     subsets = [("Darwin's finches", d[d.Type == "Darwins Finches"]),
@@ -2380,12 +2198,12 @@ def fig09(d):
     S = SPEC["fig09"]
     fig, axes = plt.subplots(3, 3, figsize=S["figsize"])
     for r, (_, sub) in enumerate(subsets):
-        ymax = sub.curvature.max() * 1.5          # same rule as correlation.py
+        ymax = sub.curvature.max() * 1.5
         for c, (col, lab) in enumerate(cols):
             ax = axes[r, c]
             sns.regplot(ax=ax, data=sub, x=col, y="curvature",
                         ci=None if EPS_SAFE else 95,
-                        seed=0,  # CHANGED: fixed seed, so the confidence band is identical on every run
+                        seed=0,
                         scatter_kws=dict(s=S["marker"], alpha=1.0 if EPS_SAFE else 0.9),
                         line_kws=dict(lw=6))
             ax.set_ylim(0, ymax)
@@ -2398,14 +2216,9 @@ def fig09(d):
     plt.close(fig)
 
 
-# --------------------------------------------------------------------------
-# Fig 10 -- measured vs predicted curvature in (x, y, z)
-# --------------------------------------------------------------------------
 
 def fig10(d):
     train = d[d.Model == "Training"]
-    # tick values read off the v2 figure, so the two versions carry the
-    # same axis divisions
     TICKS = {0: dict(x=[22, 26, 30, 34, 38], y=[12, 16, 20], z=[12, 16, 20]),
              1: dict(x=[20, 25, 30, 35], y=[12, 16, 20, 24], z=[12, 16, 20])}
     rows = [(train, "(a)", "(b)"), (d, "(c)", "(d)")]
@@ -2419,7 +2232,7 @@ def fig10(d):
                 [(sub.curvature, "Actual Curvature", la),
                  (sub.predict_curvature, "Predicted Curvature", lb)]):
             ax = fig.add_subplot(2, 2, 2 * r + c + 1, projection="3d")
-            if EPS_SAFE:                      # opaque panes, no alpha
+            if EPS_SAFE:
                 for pane in (ax.xaxis, ax.yaxis, ax.zaxis):
                     pane.set_pane_color((0.96, 0.96, 0.96, 1.0))
             s = ax.scatter(sub.length_x, sub.width_y, sub.height_z, c=vals,
@@ -2440,21 +2253,14 @@ def fig10(d):
             cb.locator = MultipleLocator(0.025)
             cb.formatter = FormatStrFormatter("%.3f")
             cb.update_ticks()
-            cb.solids.set_rasterized(False)   # keep the bar vector, not an image
+            cb.solids.set_rasterized(False)
             cb.ax.tick_params(labelsize=S["cbar"])
     fig.tight_layout(pad=1.0)
     save(fig, "FIG_Actual_VS_Model_Curvature_revised3")
     plt.close(fig)
 
 
-# --------------------------------------------------------------------------
-# Shared genus palette for Figs 11 and 12
-# --------------------------------------------------------------------------
 
-# One colour per genus, shared by Figs 11 and 12 so that a genus looks the same in
-# both. (The v2 originals used two different tab10 assignments; this is the one from
-# the morphospace figure, Fig 12.) Loxipasser is the eleventh genus and has no tab10
-# colour; the dark teal below is the only invented value.
 LOXIPASSER = "#17806d"
 
 GENUS_COLOURS = {
@@ -2463,10 +2269,10 @@ GENUS_COLOURS = {
     "Coereba": "#17becf", "Euneornis": "#7f7f7f", "Loxigilla": "#bcbd22",
     "Loxipasser": LOXIPASSER, "Melopyrrha": "#e377c2", "Tiaris": "#8c564b",
 }
-PALETTE_MORPHO = PALETTE_NORM = GENUS_COLOURS      # Fig 12 and Fig 11 use the same table
+PALETTE_MORPHO = PALETTE_NORM = GENUS_COLOURS
 
-GRID = "#d6d6d6"            # measured grid grey
-EDGE = "black"              # markers are outlined in the originals
+GRID = "#d6d6d6"
+EDGE = "black"
 
 
 def _key(g, marker, ms, pal, edge=EDGE):
@@ -2479,9 +2285,6 @@ def _genus_legend(ms, pal):
             [_key(g, "^", ms, pal) for g in RE_GENERA])
 
 
-# --------------------------------------------------------------------------
-# Fig 11 -- normalized curvature vs characteristic size
-# --------------------------------------------------------------------------
 
 def fig11(d):
     S = SPEC["fig11"]
@@ -2512,13 +2315,8 @@ def fig11(d):
     plt.close(fig)
 
 
-# --------------------------------------------------------------------------
-# Fig 12 -- two size-independent morphospaces
-# --------------------------------------------------------------------------
 
 def fig12(d):
-    """Geometry measured from v2: panels at x 0.091-0.478 and 0.595-0.982,
-    y 0.034-0.647 (from top); legend frame x 0.048-0.978, y 0.781-0.985."""
     S = SPEC["fig12"]
     fig = plt.figure(figsize=S["figsize"])
     AX_Y, AX_H, AX_W = 1 - 0.647, 0.647 - 0.034, 0.387
@@ -2532,7 +2330,7 @@ def fig12(d):
         for g in DF_GENERA + RE_GENERA:
             s = d[d.genus == g]
             c = PALETTE_MORPHO[g]
-            if len(s) > 2:                                  # convex hull
+            if len(s) > 2:
                 pts = s[[xc, "cb"]].values
                 try:
                     h = ConvexHull(pts)
@@ -2556,22 +2354,14 @@ def fig12(d):
         ax.tick_params(labelsize=S["tick"], length=0)
         fig.text(tx, 0.996, tag, fontsize=S["tag"], va="top")
 
-    # v2's legend uses VARIABLE-width columns, which a single matplotlib
-    # legend cannot do (it pads every column to the longest label).  Each
-    # column is therefore its own frameless single-column legend, packed left
-    # to right at its natural width, with the group title as centred text and
-    # one shared frame drawn around the lot.  This keeps the v2 point size.
     ms = S["legend_ms"]
     Wpt = S["figsize"][0] * 72.0
-    # v2 spacing: marker box ~21.5 pt and marker-to-text ~17 pt, i.e. 0.49 and
-    # 0.38 font units.  matplotlib's defaults (handlelength 2.0, plus border
-    # padding) are far wider and are what forced the font down before.
     HL, HTP = 0.49, 0.38
     GAP_COL, GAP_GRP, PAD = 15.0 / Wpt, 40.0 / Wpt, 6.0 / Wpt
-    Y_TITLE = 1 - 717.0 / 907.1                 # v2 title baseline band
-    Y_ROWS = 1 - 770.0 / 907.1                  # v2 first entry row
+    Y_TITLE = 1 - 717.0 / 907.1
+    Y_ROWS = 1 - 770.0 / 907.1
 
-    def columns(gens, n=3):                     # row-major, as in v2
+    def columns(gens, n=3):
         rows = -(-len(gens) // n)
         return [[gens[r * n + c] for r in range(rows) if r * n + c < len(gens)]
                 for c in range(n)]
@@ -2596,10 +2386,9 @@ def fig12(d):
             legs.append(lg); gw.append(w)
         widths.append(gw)
 
-    # pack: left group flush left inside the frame, right group flush right
     total = [sum(g) + GAP_COL * (len(g) - 1) for g in widths]
     starts = [0.048 + PAD, 0.978 - PAD - total[1]]
-    if starts[1] - (starts[0] + total[0]) < 12.0 / Wpt:   # centre only if the groups would touch
+    if starts[1] - (starts[0] + total[0]) < 12.0 / Wpt:
         span = total[0] + GAP_GRP + total[1]
         starts = [0.5 - span / 2, 0.5 - span / 2 + total[0] + GAP_GRP]
     k = 0
@@ -2624,25 +2413,20 @@ def fig12(d):
     plt.close(fig)
 
 
-# =============================================================================
-# 8. SI FIGS S6 AND S7  (axes positions, fonts and marker sizes of the published files)
-# =============================================================================
 HC_RED, CR_BLUE = "#d62728", "#1f77b4"
 
 
 def _axes_pt(fig, x0, y0, x1, y1):
-    """Axes at a box given in points from the top-left corner of the page."""
     W, H = fig.get_size_inches() * 72
     return fig.add_axes([x0 / W, 1 - y1 / H, (x1 - x0) / W, (y1 - y0) / H])
 
 
 def _split(tbl, ok):
-    """Specimens drawn as solid and as open symbols, following BELOW_CRITERIA_STYLE."""
     if BELOW_CRITERIA_STYLE == "open":
         return tbl[ok], tbl[~ok]
     if BELOW_CRITERIA_STYLE == "filled":
         return tbl, tbl.iloc[0:0]
-    return tbl[ok], tbl.iloc[0:0]                    # "hidden"
+    return tbl[ok], tbl.iloc[0:0]
 
 
 def _new_taxa(other):
@@ -2694,42 +2478,28 @@ def figS6_other_taxa(other, d):
     save(fig, "FIG_SI_other_taxa")
 
 
-# The former Fig S7 (figS7_robustness: deviation from conspecifics of intact vs damaged skulls, and the
-# two-orbit plot) was removed on Gary's advice; the two-orbit plot is now panel (c) of Fig 13.
 
 
-# =============================================================================
-# 9. FIG 14 GALLERY  (from make_gallery.py; was SI Fig S6, and Fig S4 before that)
-# =============================================================================
-#   row 1 (6 cells): fits meeting the criteria
-#   row 2 (6 cells): 2 fits meeting the criteria + one flagged fit per group
-#   row 3: the two Peromyscus skulls (lateral view, skull roof up) and the four human crania
-#   Every bird skull is drawn with its beak to the right. The fit error is printed under each cell;
-#   the reasons for the flags are given in the caption of Fig 14 (main text).
-#   (the plot of inliers against fit error that used to be panel (b) is now Fig 13(b))
 
 GALLERY_ROWS = [
-    [('HC', 'C. flavaA_p60', 'C. flava A'), ('HC', 'H.wilsoniB_p60', 'H. wilsoni B'),
-     ('HC', 'T. cantansC_p59', 'T. cantans C'), ('HC', 'M. phaeosomaA_p60', 'M. phaeosoma A'),
-     ('HC', 'L. caeruleirostrisA_p60', 'L. caeruleirostris A'), ('HC', 'P.doleiA_p61', 'P. dolei A')],
-    [('CR', 'L. arctoaA_p60', 'L. arctoa A'), ('CR', 'P.pyrrhulaA_p59', 'P. pyrrhula A'),
-     ('HC', 'V. coccineaB_p55', 'V. coccinea B'), ('HC', 'V. coccineaD_p75', 'V. coccinea D'),
-     ('HC', 'C. stejnegeriD_p55', 'C. stejnegeri D'), ('HC', 'C. virensB_p60', 'C. virens B')],
+    [('HC', 'C. flavaA', 'C. flava A'), ('HC', 'H.wilsoniB', 'H. wilsoni B'),
+     ('HC', 'T. cantansC', 'T. cantans C'), ('HC', 'M. phaeosomaA', 'M. phaeosoma A'),
+     ('HC', 'L. caeruleirostrisA', 'L. caeruleirostris A'), ('HC', 'P.doleiA', 'P. dolei A')],
+    [('CR', 'L. arctoaA', 'L. arctoa A'), ('CR', 'P.pyrrhulaA', 'P. pyrrhula A'),
+     ('HC', 'V. coccineaB', 'V. coccinea B'), ('HC', 'V. coccineaD', 'V. coccinea D'),
+     ('HC', 'C. stejnegeriD', 'C. stejnegeri D'), ('HC', 'C. virensB', 'C. virens B')],
 ]
 GALLERY_PERO = [('Peromyscus_Gossypinua_watertight', 'P. gossypinus'),
                 ('Peromyscus_Simulus_Watertight', 'P. simulus')]
-GALLERY_TITLE_SIZE = 8.5       # species names (pt), as in Fig 13
-GALLERY_TEXT_SIZE = 8.0        # "fit error ..." under each cell (pt), as in Fig 13
-# fitted spheres: the projected wireframe of Fig 13(a) plus a smooth outline. The number of lines follows
-# the size of the sphere on the page, so that the wires are about GALLERY_WIRE_SPACING apart in every cell.
-GALLERY_WIRE_LW = 0.3          # wire width (pt), as in Fig 13
-GALLERY_OUTLINE_LW = 0.6       # outline width (pt)
-GALLERY_WIRE_SPACING = 5.0     # distance between neighbouring wires on the page (pt)
-GALLERY_CELL_PT = 83.0         # width of one gallery cell on the page (pt)
+GALLERY_TITLE_SIZE = 8.5
+GALLERY_TEXT_SIZE = 8.0
+GALLERY_WIRE_LW = 0.3
+GALLERY_OUTLINE_LW = 0.6
+GALLERY_WIRE_SPACING = 5.0
+GALLERY_CELL_PT = 83.0
 
 
 def _gallery_sphere(ax, c, R, B, extent):
-    """Fitted sphere of radius R at c in the view B; `extent` is the width of the drawn skull (mm)."""
     d_pt = 2 * R / extent * GALLERY_CELL_PT
     n = int(np.clip(round(np.pi * d_pt / GALLERY_WIRE_SPACING), 8, 20))
     draw_wire_ellipsoid(ax, c, [R] * 3, B, lw=GALLERY_WIRE_LW, back_alpha=0.45, wire_n=n)
@@ -2746,12 +2516,10 @@ def _gallery_fit(stl):
 
 
 def _beak_to_the_right(axes, V, sgn):
-    """Mirror the views of a bird skull whose beak would point left (the meshes are not all oriented the
-    same way along x). The beak is the lower end of the skull, the braincase the taller one, as in Fig 13."""
     x = V[:, 0]; xl, xh = np.percentile(x, [2, 98])
     height = lambda sel: np.ptp(V[sel, 2]) if sel.any() else 0.0
-    back_high = height(x > xh - 0.1 * (xh - xl)) > height(x < xl + 0.1 * (xh - xl))   # braincase end is taller
-    tip = (V[np.argmin(x)] if back_high else V[np.argmax(x)])[0] * sgn                  # beak tip, screen x
+    back_high = height(x > xh - 0.1 * (xh - xl)) > height(x < xl + 0.1 * (xh - xl))
+    tip = (V[np.argmin(x)] if back_high else V[np.argmax(x)])[0] * sgn
     if tip < (x.min() * sgn + x.max() * sgn) / 2:
         for ax in axes:
             ax.invert_xaxis()
@@ -2773,15 +2541,10 @@ def _gallery_cell(fig, g, folder, stem, label):
              fontsize=GALLERY_TEXT_SIZE)
 
 
-# -----------------------------------------------------------------------------
-# Human crania: fitted with the settings of the human fitting script (HUMAN_FIT)
-# and added to Fig 14 (a row of the gallery), Fig 13 and SI Fig S6 (a).
-# -----------------------------------------------------------------------------
 HUMAN_PURPLE = "#6a3d9a"
 
 
 def human_results():
-    """Orbit fits on the human crania in HUMAN_DIR (empty when the folder is absent)."""
     out = []
     for path in sorted(glob.glob(os.path.join(_p(HUMAN_DIR), "*.stl"))):
         r = _memo(("human", path), lambda path=path: run(path, **HUMAN_FIT))
@@ -2795,11 +2558,10 @@ def human_results():
 
 
 def _gallery_human_cell(fig, spec, h):
-    """One cranium, seen from the front and turned towards the fitted orbit, drawn like the other cells."""
     ax = fig.add_subplot(spec)
     m = mesh_of(h["path"]); c = np.array([h["cx"], h["cy"], h["cz"]]); R = h["sphere_radius"]
     side = 1.0 if c[1] >= m.vertices[:, 1].mean() else -1.0
-    a = np.radians(35)                                # the face lies at the low-x end of these meshes
+    a = np.radians(35)
     B = camera((-np.cos(a), side * np.sin(a), 0.3), (0, 0, 1))
     V2 = draw_mesh(ax, m, B, alpha=0.55)
     _gallery_sphere(ax, c, R, B, np.ptp(V2, axis=0).max())
@@ -2809,16 +2571,14 @@ def _gallery_human_cell(fig, spec, h):
     lo, hi = V2.min(axis=0), V2.max(axis=0); pad = 0.03 * (hi - lo)
     ax.set_xlim(lo[0] - pad[0], hi[0] + pad[0]); ax.set_ylim(lo[1] - pad[1], hi[1] + pad[1])
     ax.set_aspect('equal'); ax.set_axis_off()
-    if side > 0:      # orbit fitted on the other side: mirror, so that every cranium faces the same way
-        ax.invert_xaxis()   # (as the lateral views of the bird skulls, see lateral())
+    if side > 0:
+        ax.invert_xaxis()
     ax.set_title("$\\it{H.\\ sapiens}$\n(" + h["name"] + ")", fontsize=GALLERY_TITLE_SIZE, pad=1.0)
     ax.text(0.5, -0.03, f"fit error {h['fit_err_pct']:.1f}%",
             transform=ax.transAxes, ha='center', va='top', fontsize=GALLERY_TEXT_SIZE)
 
 
 def _gallery_pero_cell(ax, stem, label):
-    """A Peromyscus skull in lateral view, skull roof up and snout to the right. In the principal-axis frame of
-    these meshes +x is the rostrum and +y is ventral (sections show the tooth rows and palate on +y)."""
     stl = os.path.join(oriented_peromyscus_dir(), stem + '.stl'); r = _gallery_fit(stl); m = mesh_of(stl)
     c = np.array([r['cx'], r['cy'], r['cz']]); R = r['sphere_radius']
     B = camera((0, 0, 1), (0, -1, 0))
@@ -2830,7 +2590,7 @@ def _gallery_pero_cell(ax, stem, label):
     lo, hi = V2.min(axis=0), V2.max(axis=0); pad = 0.04 * (hi - lo)
     ax.set_xlim(lo[0] - pad[0], hi[0] + pad[0]); ax.set_ylim(lo[1] - pad[1], hi[1] + pad[1])
     ax.set_aspect('equal'); ax.set_axis_off()
-    tip = to_screen(m.vertices[np.argmax(m.vertices[:, 0])], B)[0][0]          # rostrum tip (+x)
+    tip = to_screen(m.vertices[np.argmax(m.vertices[:, 0])], B)[0][0]
     if tip[0] < (lo[0] + hi[0]) / 2:
         ax.invert_xaxis()
     ax.set_title(label, fontsize=GALLERY_TITLE_SIZE, style='italic', pad=1.0)
@@ -2839,7 +2599,6 @@ def _gallery_pero_cell(ax, stem, label):
 
 
 def make_gallery_figure(finch, other):
-    """Fig 14: rows 1-2 the bird fits, row 3 the two Peromyscus skulls and the human crania."""
     folders = {'HC': _p(HC_DIR), 'CR': _p(CR_DIR)}
     humans = human_results()
     fig = plt.figure(figsize=(7.4, 6.9))
@@ -2850,7 +2609,6 @@ def make_gallery_figure(finch, other):
             print(f"  {label}", flush=True)
             _gallery_cell(fig, gs[ri, ci], folders[key], stem, label)
 
-    # row 3: the Peromyscus skulls, then the human crania
     for ci, (stem, label) in enumerate(GALLERY_PERO):
         print(f"  {label}", flush=True)
         _gallery_pero_cell(fig.add_subplot(gs[2, ci]), stem, label)
@@ -2863,8 +2621,6 @@ def make_gallery_figure(finch, other):
 
 
 def human_pairs():
-    """(pipeline radius, radius of the second orbit) for each cranium whose other half also yields a fit;
-    the second fit uses the same settings, restricted to the other side of the midline."""
     out = []
     for h in human_results():
         half = "y>0" if h["cy"] < 0 else "y<0"
@@ -2874,22 +2630,15 @@ def human_pairs():
     return out
 
 
-# =============================================================================
-# 9b. FIG 13  (the pipeline beyond Darwin's finches; replaces the two-skull Fig 13 of the first revision)
-# =============================================================================
-#   (a) one fit from each of four groups: Darwin's finch, Hawaiian honeycreeper, rodent (Peromyscus), human
-#   (b) number of inliers against fit error for every skull on which a sphere was accepted (as SI Fig S4(b))
-#   (c) radius of the second orbit against the orbit fitted by the pipeline (as SI Fig S7(b))
 FIG13_GREY = "#8c8c8c"
 FIG13_PERO_BROWN = "#8c564b"
-# (group label, colour, folder key, mesh stem, species label); the human cranium is chosen by its name
 FIG13_EXAMPLES = [("Darwin's finch", FIG13_GREY, "FINCH", "G.DifficilisA", "Geospiza difficilis"),
-                  ("Hawaiian honeycreeper", HC_RED, "HC", "L. caeruleirostrisA_p60", "Loxops caeruleirostris"),
+                  ("Hawaiian honeycreeper", HC_RED, "HC", 'L. caeruleirostrisA', "Loxops caeruleirostris"),
                   ("rodent", FIG13_PERO_BROWN, "PERO", "Peromyscus_Simulus_Watertight", "Peromyscus simulus"),
                   ("human cranium", HUMAN_PURPLE, "HUMAN", "BodyParts3D", "Homo sapiens")]
-FIG13_DAMAGED = "L. caeruleirostrisA_p60"     # its dorsal cranial vault is missing: arrow labelled "damaged"
-FIG13_WIRE_N = {"FINCH": 16, "HC": 16, "PERO": 12, "HUMAN": 8}   # lines each way on the fitted sphere (16 as in
-FIG13_WIRE_LW = 0.3                                               # Fig 4); fewer on the small spheres
+FIG13_DAMAGED = 'L. caeruleirostrisA'
+FIG13_WIRE_N = {"FINCH": 16, "HC": 16, "PERO": 12, "HUMAN": 8}
+FIG13_WIRE_LW = 0.3
 
 
 def _f13_title(fig, cell, group, colour, species):
@@ -2917,7 +2666,6 @@ def _f13_frame(ax, V2, pad_frac=0.04):
 
 
 def _f13_bird_cell(ax, folder, stem, wire_n):
-    """Lateral view from the side of the fitted orbit, beak to the right."""
     stl = os.path.join(folder, stem + ".stl")
     r = _gallery_fit(stl)
     m = mesh_of(stl)
@@ -2929,11 +2677,11 @@ def _f13_bird_cell(ax, folder, stem, wire_n):
     lo, hi = _f13_frame(ax, V2)
     x = V[:, 0]; xl, xh = np.percentile(x, [2, 98])
     height = lambda sel: np.ptp(V[sel, 2]) if sel.any() else 0.0
-    back_high = height(x > xh - 0.1 * (xh - xl)) > height(x < xl + 0.1 * (xh - xl))   # braincase end is taller
-    tip = to_screen(V[np.argmin(x)] if back_high else V[np.argmax(x)], B)[0][0]         # beak tip
+    back_high = height(x > xh - 0.1 * (xh - xl)) > height(x < xl + 0.1 * (xh - xl))
+    tip = to_screen(V[np.argmin(x)] if back_high else V[np.argmax(x)], B)[0][0]
     if tip[0] < (lo[0] + hi[0]) / 2:
         ax.invert_xaxis()
-    if stem == FIG13_DAMAGED:        # arrow to the roof of the braincase
+    if stem == FIG13_DAMAGED:
         xt = xh - 0.2 * (xh - xl) if back_high else xl + 0.2 * (xh - xl)
         win = np.abs(x - xt) < 0.05 * (xh - xl)
         roof = to_screen(V[np.flatnonzero(win)[np.argmax(V[win, 2])]], B)[0][0]
@@ -2944,8 +2692,6 @@ def _f13_bird_cell(ax, folder, stem, wire_n):
 
 
 def _f13_pero_cell(ax, stem, wire_n):
-    """Lateral view, skull roof up and snout to the right. In the principal-axis frame of these meshes +x is
-    the rostrum and +y is ventral (sections show the tooth rows and palate on +y, the skull roof on -y)."""
     stl = os.path.join(oriented_peromyscus_dir(), stem + ".stl")
     r = _gallery_fit(stl)
     m = mesh_of(stl)
@@ -2961,7 +2707,6 @@ def _f13_pero_cell(ax, stem, wire_n):
 
 
 def _f13_human_cell(ax, h, wire_n):
-    """The cranium from the front, turned towards the fitted orbit (as in Fig 14)."""
     m = mesh_of(h["path"])
     c = np.array([h["cx"], h["cy"], h["cz"]])
     side = 1.0 if c[1] >= m.vertices[:, 1].mean() else -1.0
@@ -2980,7 +2725,6 @@ def fig13_generalization(finch, other):
     bot = gridspec.GridSpec(1, 2, figure=fig, left=0.085, right=0.985, top=0.455, bottom=0.105, wspace=0.34,
                             width_ratios=[2.05, 1])
 
-    # (a) one example per group
     for i, (group, colour, key, stem, species) in enumerate(FIG13_EXAMPLES):
         ax = fig.add_subplot(top[0, i])
         if key == "HUMAN":
@@ -2994,12 +2738,11 @@ def fig13_generalization(finch, other):
         _f13_title(fig, cell, group, colour, species)
         _f13_caption(fig, cell, r)
 
-    # (b) inliers against fit error, every skull on which a sphere was accepted
     axb = fig.add_subplot(bot[0, 0])
     ok = other[other.status == "ok"]
     fin = finch[finch.status == "ok"]
-    hcr = ok[ok.folder.isin([_folder_name(HC_DIR), _folder_name(CR_DIR)])]      # honeycreepers + relatives
-    pero = ok[ok.filename.str.contains("Peromyscus")]                            # spheres not in the orbit
+    hcr = ok[ok.folder.isin([_folder_name(HC_DIR), _folder_name(CR_DIR)])]
+    pero = ok[ok.filename.str.contains("Peromyscus")]
     hum = pd.DataFrame([{"n_inliers": h["n_inliers"], "fit_err_pct": h["fit_err_pct"]} for h in humans])
     for d, col, lab, z in ((fin, FIG13_GREY, "Darwin's finches and relatives", 1),
                            (hcr, HC_RED, "Hawaiian honeycreepers and relatives", 3),
@@ -3013,10 +2756,9 @@ def fig13_generalization(finch, other):
     axb.legend(fontsize=7.5, loc="upper left", frameon=False, handletextpad=0.2, borderaxespad=0.2)
     axb.spines[["top", "right"]].set_visible(False)
 
-    # (c) the two orbits of each skull, fitted independently (second fit meeting the criteria)
     axc = fig.add_subplot(bot[0, 1])
     nt = other[other.folder.isin([_folder_name(HC_DIR), _folder_name(CR_DIR)])]
-    nt = nt[~nt.filename.str.contains("caeruleirostris|coccineus")]          # the asymmetric Loxops skulls
+    nt = nt[~nt.filename.str.contains("caeruleirostris|coccineus")]
     counts = []
     for tbl, col in ((finch, FIG13_GREY), (nt, HC_RED)):
         s = tbl[(tbl.status == "ok") & (tbl.status_second == "ok")]
@@ -3030,14 +2772,13 @@ def fig13_generalization(finch, other):
     axc.tick_params(labelsize=8)
     axc.set_xlabel("orbit fitted by the pipeline, $\\hat{r}$ (mm)", fontsize=9)
     axc.set_ylabel("second orbit, fitted\nindependently (mm)", fontsize=9)
-    for j, (n, col) in enumerate(counts):               # colours as in the legend of (b)
+    for j, (n, col) in enumerate(counts):
         axc.text(0.97, 0.15 - 0.085 * j, f"$n$ = {n}", transform=axc.transAxes, fontsize=8, color=col,
                  va="bottom", ha="right")
     axc.spines[["top", "right"]].set_visible(False)
     axc.set_aspect("equal", adjustable="box")
 
-    fig.canvas.draw()                                   # apply the equal aspect of (c) before placing labels
-    # panel letters: Times New Roman (first in COMPOSITE_RC), regular weight, 18 pt as in the other figures
+    fig.canvas.draw()
     fig.text(0.008, 0.965, "(a)", fontsize=18, fontfamily="serif", va="top")
     for ax, letter in ((axb, "(b)"), (axc, "(c)")):
         p = ax.get_position()
@@ -3046,10 +2787,6 @@ def fig13_generalization(finch, other):
     save(fig, "FIG_generalization")
 
 
-# =============================================================================
-# 10. SAVE AND RUN
-# =============================================================================
-# File names used for the EPS versions of the main-text figures (as in the LaTeX: Fig1.eps ...).
 EPS_NAMES = {"FIG_overview_revised": "Fig1", "FIG_bounding": "Fig2", "FIG_orbit_fitting": "Fig3",
              "FIG_sphere_examples": "Fig4", "FIG_difference_curvature": "Fig5", "FIG_ellipsoid_fitting": "Fig6",
              "FIG_ellipsoid_examples": "Fig7", "FIG_plots_with_data_and_tree_revised3": "Fig8",
@@ -3059,7 +2796,6 @@ EPS_NAMES = {"FIG_overview_revised": "Fig1", "FIG_bounding": "Fig2", "FIG_orbit_
 
 
 def save(fig, stem):
-    """PDF with real transparency; EPS with transparency pre-composited. Both fully vector."""
     os.makedirs(_p(OUT_DIR), exist_ok=True)
     if EPS_SAFE:
         path = _out(EPS_NAMES.get(stem, stem) + ".eps")
@@ -3074,7 +2810,6 @@ def save(fig, stem):
 
 
 def figure_list(finch, other, d):
-    """(key, name, function, rcParams) for every figure, in the order of the paper."""
     R, P, S = COMPOSITE_RC, FIG_RC, {}
     return [("1", "Fig 1", fig01_overview, R), ("2", "Fig 2", fig02_bounding, R),
             ("3", "Fig 3", fig03_orbit_fitting, R), ("4", "Fig 4", fig04_sphere_examples, R),
@@ -3083,13 +2818,13 @@ def figure_list(finch, other, d):
             ("8", "Fig 8", lambda: fig08(d), P), ("9", "Fig 9", lambda: fig09(d), P),
             ("10", "Fig 10", lambda: fig10(d), P), ("11", "Fig 11", lambda: fig11(d), P),
             ("12", "Fig 12", lambda: fig12(d), P), ("13", "Fig 13", lambda: fig13_generalization(finch, other), R),
-            ("14", "Fig 14", lambda: make_gallery_figure(finch, other), R),      # was SI Fig S6
+            ("14", "Fig 14", lambda: make_gallery_figure(finch, other), R),
             ("S1", "Fig S1", figS1_remeshing, R),
-            ("S2", "Fig S2", figS8_definitions, S),                            # was S4 (S8 before that)
-            ("S3", "Fig S3", figS5_width_location, S),                         # was S5
-            ("S4", "Fig S4", figS2_sphere_examples, R),                        # was S2
-            ("S5", "Fig S5", figS3_ellipsoid_examples, R),                     # was S3
-            ("S6", "Fig S6", lambda: figS6_other_taxa(other, d), S)]             # was S7
+            ("S2", "Fig S2", figS8_definitions, S),
+            ("S3", "Fig S3", figS5_width_location, S),
+            ("S4", "Fig S4", figS2_sphere_examples, R),
+            ("S5", "Fig S5", figS3_ellipsoid_examples, R),
+            ("S6", "Fig S6", lambda: figS6_other_taxa(other, d), S)]
 
 
 def main():

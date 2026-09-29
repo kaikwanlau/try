@@ -1,26 +1,4 @@
 #!/usr/bin/env python3
-"""
-check_orbit.py -- fit the orbit sphere on remeshed skulls and show the result. No arguments needed.
-
-    project/
-      remeshed/              <- copy the STL(s) from MATLAB here (name them <specimen>_p<para>.stl, e.g. T. cantansA_p60.stl)
-      fit_sphere_logged.py
-      check_orbit.py         <- run this
-      results/               <- created automatically
-
-    python check_orbit.py            fits every STL in remeshed/ that has not been fitted yet, opens the PNG(s)
-    python check_orbit.py --all      re-fits everything in remeshed/
-    python check_orbit.py --no-show  don't open the PNGs
-
-Outputs (accumulating):
-    results/accepted.xlsx      every accepted fit (all parameters tried)
-    results/attempts.csv       every seed attempt
-    results/failed.txt         every failed fit
-    results/final.xlsx         one row per specimen (highest-numbered/latest parameter file present is NOT chosen
-                               automatically - the row for each file is kept, so delete superseded files from remeshed/
-                               or mark them in the 'keep' column when you are done)
-    results/renders/<name>.png 3 views + 2 sections through the sphere centre
-"""
 import argparse, glob, os, platform, subprocess, sys
 import pandas as pd
 
@@ -36,7 +14,7 @@ a = ap.parse_args()
 
 fit_script = os.path.join(HERE, 'fit_sphere_logged.py')
 render_dir = os.path.join(a.results, 'renders'); os.makedirs(render_dir, exist_ok=True)
-prefix = os.path.join(a.results, '')          # results/accepted.xlsx etc.
+prefix = os.path.join(a.results, '')
 P = lambda ext: os.path.join(a.results, ext)
 
 files = sorted(os.path.basename(f) for f in glob.glob(os.path.join(a.folder, '*.stl')))
@@ -55,7 +33,6 @@ if a.view == 'window': a.no_show = True
 r = subprocess.run(fit_cmd)
 if r.returncode != 0: sys.exit('fitting failed')
 
-# merge this run into the accumulated files (rows for re-fitted files are replaced)
 for ext in ('accepted.xlsx', 'attempts.csv'):
     rd = pd.read_excel if ext.endswith('xlsx') else pd.read_csv
     new = rd(run + '_' + ext) if os.path.exists(run + '_' + ext) else pd.DataFrame()
@@ -69,7 +46,6 @@ new = [l for l in (open(run + '_failed.txt').read().splitlines() if os.path.exis
 open(P('failed.txt'), 'w').write('\n'.join(old + new) + ('\n' if old + new else ''))
 if os.path.exists(run + '_failed.txt'): os.remove(run + '_failed.txt')
 
-# final table: one row per file currently in remeshed/
 acc = pd.read_excel(P('accepted.xlsx')) if os.path.exists(P('accepted.xlsx')) else pd.DataFrame()
 failed = {l.split('\t')[0]: (l.split('\t')[1] if '\t' in l else '') for l in open(P('failed.txt')).read().splitlines() if l.strip()}
 rows = []

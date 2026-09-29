@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""Build the static guide pages. Optional maintainer dependency: Markdown==3.8.2.
-
-python -m pip install Markdown==3.8.2
-python tools/build_docs.py
-The landing page and its CSS/JS are hand-authored; Markdown files remain editable sources.
-"""
 from pathlib import Path
 import html
 import re

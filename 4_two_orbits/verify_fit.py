@@ -1,6 +1,3 @@
-"""Headless re-implementation of the released fit_sphere.py (garyptchoi/skull-morphology),
-with diagnostics recorded per specimen. Algorithm identical to the released script.
-"""
 import sys, os, glob
 import numpy as np
 import trimesh
@@ -123,7 +120,6 @@ def run(file_path, ROI_START_PERCENT=0.30, ROI_END_PERCENT=0.70, MIN_ORBIT_RADIU
                    rejected=';'.join(f'{a}:{r}' for a, r in rejected))
         out['_inliers'] = final_points; out['_seed'] = processed_mesh.vertices[seed_index]
         if record_unclipped:
-            # size of the concave component around the same seed without the ROI clipping
             valid_full = initial_mask.copy()
             ve = valid_full[processed_mesh.edges].all(axis=1)
             se = processed_mesh.edges[ve]
@@ -141,11 +137,6 @@ def run(file_path, ROI_START_PERCENT=0.30, ROI_END_PERCENT=0.70, MIN_ORBIT_RADIU
 
 
 if __name__ == '__main__':
-    # Press Run (no arguments): fits every skull in the folders of data/ used by two_orbit.py and writes
-    # output/verify_fit/verify_fit_results.csv next to this file.
-    # Or:  python verify_fit.py <mesh folder> [<mesh folder> ...] [<output.csv>]
-    # (The results are only ever written to a .csv file; without arguments they used to be written over
-    # this file itself.)
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
     import paths
@@ -167,7 +158,6 @@ if __name__ == '__main__':
             rows.append(r)
             print(r.get('filename'), r.get('status'), r.get('sphere_radius'), r.get('n_inliers'), r.get('fit_err_pct'), flush=True)
     table = pd.DataFrame(rows)
-    # the columns starting with '_' hold point arrays, used by two_orbit.py for its pictures only
     table = table.drop(columns=[c for c in table.columns if c.startswith('_')])
     table.to_csv(out_csv, index=False)
     n_ok = int((table['status'] == 'ok').sum()) if 'status' in table else 0

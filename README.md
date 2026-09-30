@@ -102,4 +102,4 @@ Kaikwan Lau and Gary P. T. Choi. *[Robust Parametric Estimation of Avian Cranial
 
 Code license: **[Apache License 2.0](LICENSE)**. Bundled MATLAB dependencies retain their [third-party licenses and credits](1_remeshing/Remeshing/THIRD_PARTY.md). See the original data sources for their attribution and reuse terms.
 
-[Report an issue](https://github.com/kaikwanlau/skull-morphology/issues) · [Script reference](docs/REFERENCE.md) · [Update notes](UPDATE_NOTES.md)
+[Report an issue](https://github.com/kaikwanlau/skull-morphology/issues) · [Script reference](docs/REFERENCE.md)
